@@ -1,12 +1,12 @@
-/* Yayasan Al Istiqomah Kuningan PWA service worker */
-const CACHE_VERSION = 'al-istiqomah-v1';
+/* MIT Muhammadiyah Sukarame PWA service worker */
+const CACHE_VERSION = 'mit-sukarame-v1';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_URLS = [
   OFFLINE_URL,
   '/manifest.webmanifest',
-  '/istiqomah.png',
+  '/mit.png',
 ];
 
 self.addEventListener('install', (event) => {

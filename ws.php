@@ -227,7 +227,7 @@ class Tagihan
     {
         $va_number = preg_replace('/\s+/', '', (string) $va_number);
 
-        foreach (['797777', '96240', '797783', '751000', '797766', '757777'] as $prefix) {
+        foreach (['797777', '96240', '797783', '751000', '797766', '757777', '77726'] as $prefix) {
             if (strpos($va_number, $prefix) === 0) {
                 $va_number = substr($va_number, strlen($prefix));
                 break;

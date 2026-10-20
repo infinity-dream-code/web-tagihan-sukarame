@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Cek Tagihan | Yayasan Al Istiqomah Kuningan</title>
+<title>Cek Tagihan | MIT Muhammadiyah Sukarame</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="description" content="Cek tagihan siswa Yayasan Al Istiqomah Kuningan">
+<meta name="description" content="Cek tagihan siswa MIT Muhammadiyah Sukarame — Kota Bandar Lampung, Prov. Lampung">
 <meta name="theme-color" content="#14532d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Yayasan Al Istiqomah Kuningan">
+<meta name="apple-mobile-web-app-title" content="MIT Muhammadiyah Sukarame">
 <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
-<link rel="icon" type="image/png" href="{{ asset('istiqomah.png') }}">
-<link rel="apple-touch-icon" href="{{ asset('istiqomah.png') }}">
+<link rel="icon" type="image/png" href="{{ asset('mit.png') }}">
+<link rel="apple-touch-icon" href="{{ asset('mit.png') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -251,12 +251,38 @@ html.dark .ma-success{background:#052e16;border-color:#14532d;color:#86efac}
 .scroll-top{position:fixed;bottom:max(1.15rem,env(safe-area-inset-bottom));right:max(1rem,env(safe-area-inset-right));width:44px;height:44px;border-radius:50%;border:1px solid var(--border2);background:var(--surface);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 20px rgba(19,38,26,.12);z-index:20}
 .scroll-top:hover{background:var(--surface2)}
 .empty-note{text-align:center;padding:1.5rem 1rem;color:var(--text3);font-size:13px}
+.guide-card{overflow:hidden}
+.guide-layout{display:grid;grid-template-columns:1fr;gap:1.1rem}
+.guide-preview{position:relative;display:block;width:100%;border:none;padding:0;border-radius:14px;overflow:hidden;cursor:pointer;background:var(--surface2);border:1px solid var(--border);aspect-ratio:16/11;text-align:left}
+.guide-preview img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;transition:transform .35s ease}
+.guide-preview:hover img{transform:scale(1.03)}
+.guide-preview-overlay{position:absolute;inset:auto 0 0 0;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:linear-gradient(transparent,rgba(12,22,16,.72));color:#fff;font-size:13px;font-weight:700}
+.guide-copy h2{margin:0 0 .4rem;font-size:1.05rem;font-weight:700;color:var(--text);line-height:1.3}
+.guide-copy p{margin:0 0 .9rem;font-size:13px;color:var(--text2);line-height:1.55}
+.guide-tips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 1.05rem;padding:0;list-style:none}
+.guide-tips li{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:var(--accent-soft);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text2)}
+.guide-tips li b{color:var(--accent);font-weight:700}
+.guide-actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn-guide{min-height:44px;padding:10px 16px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.btn-guide:hover{background:var(--accent-h)}
+html.dark .btn-guide{color:#052e16}
+.btn-guide-ghost{min-height:44px;padding:10px 16px;border-radius:12px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;transition:background .15s}
+.btn-guide-ghost:hover{background:var(--surface2)}
+.guide-link{display:inline-flex;align-items:center;gap:6px;margin-top:.85rem;font-size:13px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:0}
+.guide-link:hover{text-decoration:underline}
+.modal-box.panduan-modal{max-width:min(920px,100%);max-height:92vh}
+.panduan-body{padding:.85rem 1rem 1rem}
+.panduan-frame{border-radius:12px;border:1px solid var(--border);background:var(--surface2);overflow:auto;max-height:min(72vh,820px);-webkit-overflow-scrolling:touch}
+.panduan-frame img{display:block;width:100%;height:auto}
+.panduan-note{margin:.75rem 0 0;font-size:12px;color:var(--text3);line-height:1.5;text-align:center}
 @media(min-width:900px){
 .wrap{padding:1.5rem 1.5rem 2.75rem;padding-left:max(1.5rem,env(safe-area-inset-left));padding-right:max(1.5rem,env(safe-area-inset-right))}
 .form-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 1.15rem;align-items:end}
 .form-grid .field{margin-bottom:1rem}
 .student-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:.85rem}
 .card{padding:1.5rem 1.45rem}
+.guide-layout{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:1.35rem;align-items:center}
+.guide-preview{aspect-ratio:4/3}
 }
 @media(max-width:720px){
 .tbl-wrap{display:none}
@@ -287,10 +313,11 @@ h1{font-size:1.15rem}
 <div class="wrap">
   <div class="topbar">
     <div class="brand-wrap">
-      <img src="{{ asset('istiqomah.png') }}" alt="Yayasan Al Istiqomah Kuningan" class="brand-logo">
+      <img src="{{ asset('mit.png') }}" alt="MIT Muhammadiyah Sukarame" class="brand-logo">
       <div>
-        <div class="brand">Yayasan Al Istiqomah Kuningan</div>
+        <div class="brand">MIT Muhammadiyah Sukarame</div>
         <h1>Cek tagihan</h1>
+        <div class="brand" style="margin-top:4px;text-transform:none;letter-spacing:0;font-weight:500">Kota Bandar Lampung, Prov. Lampung</div>
       </div>
     </div>
     <div class="topbar-actions">
@@ -312,7 +339,7 @@ h1{font-size:1.15rem}
       <div class="form-grid">
         <div class="field">
           <label>Nomor Induk Siswa <em>*</em></label>
-          <input type="text" name="no_cust" id="noCust" inputmode="numeric" autocomplete="username" placeholder="797777xxx" value="{{ old('no_cust', $va ?? '') }}" required>
+          <input type="text" name="no_cust" id="noCust" inputmode="numeric" autocomplete="username" placeholder="77726xxx" value="{{ old('no_cust', $va ?? '') }}" required>
         </div>
         <div class="field">
           <label>Password <em>*</em></label>
@@ -340,6 +367,10 @@ h1{font-size:1.15rem}
         Cek tagihan
       </button>
     </form>
+    <button type="button" class="guide-link" onclick="openPanduanModal()">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      Lihat panduan pembayaran VA
+    </button>
 
     @if(session('error'))
     <script>
@@ -604,7 +635,39 @@ h1{font-size:1.15rem}
     @endif
   @endif
 
-  <div class="footer">© {{ date('Y') }} Yayasan Al Istiqomah Kuningan. All rights reserved.</div>
+  <div class="card guide-card" id="panduanCard">
+    <div class="section-title">Panduan pembayaran</div>
+    <div class="guide-layout">
+      <button type="button" class="guide-preview" onclick="openPanduanModal()" aria-label="Perbesar panduan pembayaran">
+        <img src="{{ asset('panduan.png') }}" alt="Panduan pembayaran Virtual Account MIT Muhammadiyah Sukarame" loading="lazy" decoding="async">
+        <span class="guide-preview-overlay">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+          Perbesar panduan
+        </span>
+      </button>
+      <div class="guide-copy">
+        <h2>Cara bayar Virtual Account</h2>
+        <p>Panduan resmi MIT Muhammadiyah Sukarame untuk pembayaran via mobile banking, ATM bank lain, e-wallet, atau Muamalat DIN.</p>
+        <ul class="guide-tips">
+          <li>Bank tujuan: <b>Muamalat</b></li>
+          <li>Prefix VA: <b>77726</b></li>
+          <li>Tambah biaya: <b>Rp 2.000</b></li>
+        </ul>
+        <div class="guide-actions">
+          <button type="button" class="btn-guide" onclick="openPanduanModal()">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            Lihat panduan
+          </button>
+          <a class="btn-guide-ghost" href="{{ asset('panduan.png') }}" target="_blank" rel="noopener">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            Buka tab baru
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">© {{ date('Y') }} MIT Muhammadiyah Sukarame — Kota Bandar Lampung, Prov. Lampung. All rights reserved.</div>
 </div>
 
 <div id="detailModal" class="modal-bg">
@@ -653,8 +716,8 @@ h1{font-size:1.15rem}
     </div>
     <div class="modal-body">
       <div class="install-hero">
-        <img src="{{ asset('istiqomah.png') }}" alt="Yayasan Al Istiqomah Kuningan">
-        <h4>Yayasan Al Istiqomah Kuningan</h4>
+        <img src="{{ asset('mit.png') }}" alt="MIT Muhammadiyah Sukarame">
+        <h4>MIT Muhammadiyah Sukarame</h4>
         <p id="installModalText">Pasang aplikasi ke perangkat Anda agar lebih cepat dibuka dan mudah diakses.</p>
       </div>
     </div>
@@ -664,6 +727,30 @@ h1{font-size:1.15rem}
         Install sekarang
       </button>
       <button class="btn-close-full" onclick="closeInstallModal()" type="button">Nanti saja</button>
+    </div>
+  </div>
+</div>
+
+<div id="panduanModal" class="modal-bg" onclick="if(event.target===this)closePanduanModal()">
+  <div class="modal-box panduan-modal" role="dialog" aria-modal="true" aria-labelledby="panduanModalTitle">
+    <div class="modal-head">
+      <h3 id="panduanModalTitle">Panduan pembayaran VA</h3>
+      <button class="modal-x" onclick="closePanduanModal()" aria-label="Tutup" type="button">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="panduan-body">
+      <div class="panduan-frame">
+        <img src="{{ asset('panduan.png') }}" alt="Panduan pembayaran Virtual Account MIT Muhammadiyah Sukarame" loading="lazy" decoding="async">
+      </div>
+      <p class="panduan-note">Pastikan menambah biaya admin <b>Rp 2.000</b> pada nominal tagihan. VA Open Payment: prefix <b>77726</b>.</p>
+    </div>
+    <div class="modal-foot" style="display:flex;flex-wrap:wrap;gap:8px">
+      <a class="btn-guide" style="flex:1;text-decoration:none" href="{{ asset('panduan.png') }}" target="_blank" rel="noopener">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        Buka penuh
+      </a>
+      <button class="btn-close-full" style="flex:1" onclick="closePanduanModal()" type="button">Tutup</button>
     </div>
   </div>
 </div>
@@ -725,7 +812,7 @@ h1{font-size:1.15rem}
         @csrf
         <div class="field">
           <label>Nomor Induk Siswa <em>*</em></label>
-          <input type="text" name="no_cust" id="maNoCust" placeholder="797777xxx" required autocomplete="username">
+          <input type="text" name="no_cust" id="maNoCust" placeholder="77726xxx" required autocomplete="username">
         </div>
         <div class="field">
           <label>Password <em>*</em></label>
@@ -1293,9 +1380,9 @@ function formatRp(n) {
 function formatNovaDisplay(va) {
   let n = String(va ?? '').replace(/\s+/g, '');
   if (!n || n === '-') return '-';
-  n = n.replace(/^(797777|96240|797783|757777|797766|751000)/, '');
+  n = n.replace(/^(797777|96240|797783|757777|797766|751000|77726)/, '');
   n = n.replace(/^0+/, '') || n;
-  return n ? ('797777' + n) : '-';
+  return n ? ('77726' + n) : '-';
 }
 
 function esc(s) {
@@ -1617,7 +1704,7 @@ async function prosesPembayaran() {
           <div class="va-number" id="vaNumberText">${esc(va)}</div>
           <button type="button" class="btn-copy" onclick="copyVa()">Salin nomor VA</button>
           <p class="va-meta">Total: <b>${formatRp(total)}</b></p>
-          <p class="va-help">Bayar ke nomor VA di atas (kode bank 797777).</p>
+          <p class="va-help">Bayar ke nomor VA di atas (kode bank 77726 Open Payment).</p>
         </div>`;
       const actions = document.getElementById('payActions');
       if (actions) {
@@ -1717,6 +1804,25 @@ function closeInstallModal() {
   modal.classList.remove('open');
   document.body.style.overflow = '';
 }
+
+function openPanduanModal() {
+  const modal = document.getElementById('panduanModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePanduanModal() {
+  const modal = document.getElementById('panduanModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  if (!document.querySelector('.modal-bg.open')) document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  closePanduanModal();
+});
 
 function syncInstallModalState() {
   if (!btnInstallNow) return;

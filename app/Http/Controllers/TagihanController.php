@@ -24,7 +24,7 @@ class TagihanController extends Controller
     {
         $va = preg_replace('/\s+/', '', (string) $va);
 
-        if (preg_match('/^(797777|96240|797783|757777|797766|751000)(\d+)$/', $va, $m)) {
+        if (preg_match('/^(797777|96240|797783|757777|797766|751000|77726)(\d+)$/', $va, $m)) {
             $va = $m[2];
         }
 
@@ -41,7 +41,7 @@ class TagihanController extends Controller
             return '-';
         }
 
-        return '797777'.$n;
+        return '77726'.$n;
     }
 
     public function cek(Request $request)

@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Cek & Bayar Tagihan - Yayasan Al Istiqomah Kuningan",
-  "short_name": "Al Istiqomah",
-  "description": "Cek dan bayar tagihan siswa Yayasan Al Istiqomah Kuningan",
+  "name": "Cek & Bayar Tagihan - MIT Muhammadiyah Sukarame",
+  "short_name": "MIT Sukarame",
+  "description": "Cek dan bayar tagihan siswa MIT Muhammadiyah Sukarame — Kota Bandar Lampung, Prov. Lampung",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
@@ -21,13 +21,13 @@
   ],
   "icons": [
     {
-      "src": "/istiqomah.png",
+      "src": "/mit.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/istiqomah.png",
+      "src": "/mit.png",
       "sizes": "any",
       "type": "image/png",
       "purpose": "maskable"
