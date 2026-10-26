@@ -93,18 +93,25 @@ class MultiAccountService
         string $password,
         string $newAcademicYear
     ): array {
-        $result = self::postWs('multi-akun-tambah', [
-            'active_va' => TagihanController::normalizeVa($activeVa),
-            'active_tahun_akademik' => $activeAcademicYear,
-            'va' => $newVa,
-            'password' => $password,
-            'tahun_akademik' => $newAcademicYear,
-        ]);
+        $result = ['status' => false, 'message' => 'Gagal menambahkan multi akun'];
+        foreach (TagihanController::vaCandidates($newVa) as $candidate) {
+            $result = self::postWs('multi-akun-tambah', [
+                'active_va' => TagihanController::normalizeVa($activeVa),
+                'active_tahun_akademik' => $activeAcademicYear,
+                'va' => $candidate,
+                'password' => $password,
+                'tahun_akademik' => $newAcademicYear,
+            ]);
+
+            if (!empty($result['status'])) {
+                break;
+            }
+        }
 
         if (empty($result['status'])) {
             return [
                 'status' => false,
-                'message' => $result['message'] ?? 'Gagal menambahkan multi akun',
+                'message' => $result['message'] ?? 'Gagal menambahkan multi akun. Pastikan nomor VA dan password benar.',
             ];
         }
 

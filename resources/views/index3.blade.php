@@ -111,6 +111,13 @@ html.dark .submit-btn{color:#052e16}
 .sf{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 12px}
 .sf label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
 .sf p{font-size:14px;font-weight:650;color:var(--text);margin:0;word-break:break-word;line-height:1.35}
+.nova-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nova-row p{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;min-width:0}
+.btn-copy-nova{flex-shrink:0;min-width:34px;height:34px;padding:0 8px;border-radius:9px;border:1px solid var(--border2);background:var(--surface);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:5px;cursor:pointer;transition:background .15s,border .15s}
+.btn-copy-nova:hover{background:var(--accent-soft);border-color:var(--accent)}
+.btn-copy-nova span{font-size:11px;font-weight:700}
+.btn-copy{min-height:42px;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.btn-copy:hover{background:var(--accent-soft);border-color:var(--accent)}
 .tbl-bar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;flex-wrap:wrap;gap:.65rem}
 .tbl-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.35}
 .tbl-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -338,8 +345,8 @@ h1{font-size:1.15rem}
       <div class="section-title">Informasi akun</div>
       <div class="form-grid">
         <div class="field">
-          <label>Nomor Induk Siswa <em>*</em></label>
-          <input type="text" name="no_cust" id="noCust" inputmode="numeric" autocomplete="username" placeholder="77726xxx" value="{{ old('no_cust', $va ?? '') }}" required>
+          <label>Nomor VA <em>*</em></label>
+          <input type="text" name="no_cust" id="noCust" inputmode="numeric" autocomplete="username" placeholder="777726xxxxxxxxxx" value="{{ old('no_cust', $va ?? '') }}" required>
         </div>
         <div class="field">
           <label>Password <em>*</em></label>
@@ -352,7 +359,12 @@ h1{font-size:1.15rem}
           </div>
         </div>
       </div>
-      <input type="hidden" name="academic_year" id="academic_year" value="all">
+      <div class="field">
+        <label>Tahun akademik / pelajaran</label>
+        <select name="academic_year" id="academic_year" aria-label="Tahun akademik">
+          <option value="all" {{ ($academic_year ?? 'all') === 'all' ? 'selected' : '' }}>Semua tahun akademik</option>
+        </select>
+      </div>
       @if(config('services.turnstile.enabled'))
       <div class="field">
         <label>Verifikasi keamanan <em>*</em></label>
@@ -415,19 +427,47 @@ h1{font-size:1.15rem}
             <button type="button" class="btn-showall" id="btnMultiAkun" onclick="openMultiAkunModal()">Multi akun</button>
           </div>
         </div>
+        @php
+          $angkatanSiswa = $result['data']['angkatan'] ?? $result['data']['tahun_akademik'] ?? $result['data']['tahun_masuk'] ?? '-';
+          $kelompokSiswa = $result['data']['kelompok'] ?? $result['data']['jurusan'] ?? '-';
+        @endphp
         <div class="student-grid">
           <div class="sf"><label>Nama</label><p>{{ $result['data']['nama'] ?? '-' }}</p></div>
           <div class="sf"><label>Kelas</label><p>{{ $result['data']['kelas'] ?? '-' }}</p></div>
-          <div class="sf"><label>Angkatan</label><p>{{ ($academic_year ?? 'all') === 'all' ? 'Semua' : $academic_year }}</p></div>
+          <div class="sf"><label>Kelompok</label><p>{{ $kelompokSiswa }}</p></div>
+          <div class="sf"><label>Angkatan / Tahun masuk</label><p>{{ $angkatanSiswa }}</p></div>
           <div class="sf"><label>Saldo VA</label><p>Rp {{ number_format($result['data']['saldo'] ?? 0, 0, ',', '.') }}</p></div>
-          <div class="sf"><label>NOVA</label><p>{{ $result['data']['va_number'] ?? '-' }}</p></div>
+          @php $novaSiswa = $result['data']['va_number'] ?? '-'; @endphp
+          <div class="sf">
+            <label>NOVA</label>
+            <div class="nova-row">
+              <p id="novaText">{{ $novaSiswa }}</p>
+              @if($novaSiswa !== '' && $novaSiswa !== '-')
+              <button type="button" class="btn-copy-nova" onclick="copyNova('novaText')" aria-label="Salin nomor VA">
+                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                <span>Salin</span>
+              </button>
+              @endif
+            </div>
+          </div>
           <div class="sf"><label>Jenjang</label><p>{{ $result['data']['jenjang'] ?? '-' }}</p></div>
         </div>
 
         <div class="divider"></div>
 
+        <div class="tbl-bar" style="align-items:flex-end">
+          <div>
+            <div class="tbl-title" id="tagihanTitle">Tagihan aktif — {{ ($academic_year ?? 'all') === 'all' ? 'Semua tahun akademik' : $academic_year }}</div>
+            <p class="tbl-info" style="margin-top:4px">Filter berdasarkan tahun akademik / pelajaran</p>
+          </div>
+          <div class="tbl-controls">
+            <select id="billYearFilter" aria-label="Filter tahun akademik" onchange="onBillYearChange(this)">
+              <option value="all" {{ ($academic_year ?? 'all') === 'all' ? 'selected' : '' }}>Semua tahun akademik</option>
+            </select>
+          </div>
+        </div>
+
         <div class="tbl-bar">
-          <div class="tbl-title">Tagihan aktif — {{ ($academic_year ?? 'all') === 'all' ? 'Semua tahun akademik' : $academic_year }}</div>
           <div class="tbl-controls">
             <select id="tagihanPerPage" onchange="changeTagihanPerPage()" aria-label="Jumlah data">
               <option value="10">10</option>
@@ -465,8 +505,9 @@ h1{font-size:1.15rem}
                 $sudahBayar = (int)($tagih['sudah_dibayar'] ?? 0);
                 $totalTagih = (int)($tagih['total_tagihan'] ?? 0);
                 $sisaTagih = (int)($tagih['sisa_tagihan'] ?? max(0, $totalTagih - $sudahBayar));
+                $tahunTagih = $tagih['tahun_akademik_tagihan'] ?? '';
               @endphp
-              <tr data-index="{{ $i }}">
+              <tr data-index="{{ $i }}" data-tahun="{{ $tahunTagih }}">
                 @unless($viewOnly)
                 <td>
                   <input type="checkbox" class="chk tagihan-checkbox" value="{{ $tagih['AA'] ?? '' }}" data-index="{{ $i }}" {{ $sisaTagih <= 0 ? 'disabled' : '' }} aria-label="Pilih tagihan">
@@ -509,8 +550,9 @@ h1{font-size:1.15rem}
             $sudahBayar = (int)($tagih['sudah_dibayar'] ?? 0);
             $totalTagih = (int)($tagih['total_tagihan'] ?? 0);
             $sisaTagih = (int)($tagih['sisa_tagihan'] ?? max(0, $totalTagih - $sudahBayar));
+            $tahunTagih = $tagih['tahun_akademik_tagihan'] ?? '';
           @endphp
-          <article class="bill-card" data-index="{{ $i }}">
+          <article class="bill-card" data-index="{{ $i }}" data-tahun="{{ $tahunTagih }}">
             <div class="bill-card-top">
               @if($viewOnly)
                 <span class="badge badge-unpaid">Belum lunas</span>
@@ -564,7 +606,7 @@ h1{font-size:1.15rem}
         <div class="divider"></div>
 
         <div class="tbl-bar">
-          <div class="tbl-title">Tagihan lunas — {{ ($academic_year ?? 'all') === 'all' ? 'Semua tahun akademik' : $academic_year }}</div>
+          <div class="tbl-title" id="lunasTitle">Tagihan lunas — {{ ($academic_year ?? 'all') === 'all' ? 'Semua tahun akademik' : $academic_year }}</div>
           <div class="tbl-controls">
             <select id="lunasPerPage" onchange="changeLunasPerPage()" aria-label="Jumlah data">
               <option value="10">10</option>
@@ -591,7 +633,7 @@ h1{font-size:1.15rem}
             </thead>
             <tbody id="lunasTableBody">
               @forelse($result['data']['tagihan_lunas'] ?? [] as $i => $tagih)
-              <tr data-index="{{ $i }}">
+              <tr data-index="{{ $i }}" data-tahun="{{ $tagih['tahun_akademik_tagihan'] ?? '' }}">
                 <td>{{ $i+1 }}</td>
                 <td>{{ $tagih['FURUTAN'] ?? '-' }}</td>
                 <td>{{ ucwords(str_replace('_', ' ', strtolower($tagih['nama_tagihan']))) }}</td>
@@ -608,7 +650,7 @@ h1{font-size:1.15rem}
         </div>
         <div class="card-list" id="lunasCardList">
           @forelse($result['data']['tagihan_lunas'] ?? [] as $i => $tagih)
-          <article class="bill-card" data-index="{{ $i }}">
+          <article class="bill-card" data-index="{{ $i }}" data-tahun="{{ $tagih['tahun_akademik_tagihan'] ?? '' }}">
             <div class="bill-card-top">
               <span class="badge badge-paid">Lunas</span>
               <button type="button" class="btn-detail" onclick="showLunasDetail({{ $i }})">Detail</button>
@@ -650,7 +692,7 @@ h1{font-size:1.15rem}
         <p>Panduan resmi MIT Muhammadiyah Sukarame untuk pembayaran via mobile banking, ATM bank lain, e-wallet, atau Muamalat DIN.</p>
         <ul class="guide-tips">
           <li>Bank tujuan: <b>Muamalat</b></li>
-          <li>Prefix VA: <b>77726</b></li>
+          <li>Prefix VA: <b>777726</b></li>
           <li>Tambah biaya: <b>Rp 2.000</b></li>
         </ul>
         <div class="guide-actions">
@@ -743,7 +785,7 @@ h1{font-size:1.15rem}
       <div class="panduan-frame">
         <img src="{{ asset('panduan.png') }}" alt="Panduan pembayaran Virtual Account MIT Muhammadiyah Sukarame" loading="lazy" decoding="async">
       </div>
-      <p class="panduan-note">Pastikan menambah biaya admin <b>Rp 2.000</b> pada nominal tagihan. VA Open Payment: prefix <b>77726</b>.</p>
+      <p class="panduan-note">Pastikan menambah biaya admin <b>Rp 2.000</b> pada nominal tagihan. VA Open Payment: prefix <b>777726</b>.</p>
     </div>
     <div class="modal-foot" style="display:flex;flex-wrap:wrap;gap:8px">
       <a class="btn-guide" style="flex:1;text-decoration:none" href="{{ asset('panduan.png') }}" target="_blank" rel="noopener">
@@ -811,8 +853,8 @@ h1{font-size:1.15rem}
       <form id="multiAkunForm" onsubmit="return submitTambahMultiAkun(event)">
         @csrf
         <div class="field">
-          <label>Nomor Induk Siswa <em>*</em></label>
-          <input type="text" name="no_cust" id="maNoCust" placeholder="77726xxx" required autocomplete="username">
+          <label>Nomor VA <em>*</em></label>
+          <input type="text" name="no_cust" id="maNoCust" placeholder="777726xxxxxxxxxx" required autocomplete="username">
         </div>
         <div class="field">
           <label>Password <em>*</em></label>
@@ -933,17 +975,87 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const s = document.getElementById('academic_year');
-  if (s && !s.value) s.value = 'all';
+  fillYearSelects();
   initTagihanPagination();
   initLunasPagination();
 });
+
+const preselectedYear = @json($academic_year ?? 'all');
+let selectedBillYear = preselectedYear || 'all';
+
+function collectBillYears() {
+  const years = new Set();
+  document.querySelectorAll('[data-tahun]').forEach(el => {
+    const y = String(el.getAttribute('data-tahun') || '').trim();
+    if (y && y !== '-' && y.toLowerCase() !== 'all') years.add(y);
+  });
+  return Array.from(years).sort().reverse();
+}
+
+function fillYearSelects() {
+  const localYears = collectBillYears();
+  const selects = [document.getElementById('academic_year'), document.getElementById('billYearFilter')].filter(Boolean);
+  const apply = (years) => {
+    selects.forEach(s => {
+      const current = s.value || preselectedYear || 'all';
+      const keepFirst = s.querySelector('option[value="all"]');
+      s.innerHTML = '';
+      const def = document.createElement('option');
+      def.value = 'all';
+      def.textContent = 'Semua tahun akademik';
+      s.appendChild(keepFirst ? def : def);
+      years.forEach(y => {
+        const o = document.createElement('option');
+        o.value = y;
+        o.textContent = y;
+        s.appendChild(o);
+      });
+      const match = Array.from(s.options).find(o => o.value === current);
+      s.value = match ? current : 'all';
+    });
+    selectedBillYear = (document.getElementById('billYearFilter') || {}).value || 'all';
+    applyBillYearFilter(false);
+  };
+
+  apply(localYears);
+  fetch('/list-tahun-akademik')
+    .then(r => r.json())
+    .then(data => {
+      const apiYears = (data && data.status && Array.isArray(data.data))
+        ? data.data.map(i => i.thn_aka).filter(Boolean)
+        : [];
+      apply(Array.from(new Set([...apiYears, ...localYears])));
+    })
+    .catch(() => {});
+}
+
+function onBillYearChange(sel) {
+  selectedBillYear = sel.value || 'all';
+  const loginSel = document.getElementById('academic_year');
+  if (loginSel) loginSel.value = selectedBillYear;
+  applyBillYearFilter(true);
+}
+
+function applyBillYearFilter(resetPage) {
+  if (resetPage) { tagihanPage = 1; lunasPage = 1; }
+  const label = (!selectedBillYear || selectedBillYear === 'all') ? 'Semua tahun akademik' : selectedBillYear;
+  const t1 = document.getElementById('tagihanTitle');
+  const t2 = document.getElementById('lunasTitle');
+  if (t1) t1.textContent = 'Tagihan aktif — ' + label;
+  if (t2) t2.textContent = 'Tagihan lunas — ' + label;
+  initTagihanPagination();
+  initLunasPagination();
+}
 
 window.onload = initTurnstile;
 
 function getRows(id) {
   const el = document.getElementById(id);
-  return el ? Array.from(el.querySelectorAll('tr[data-index]')) : [];
+  if (!el) return [];
+  return Array.from(el.querySelectorAll('tr[data-index]')).filter(r => {
+    if (!selectedBillYear || selectedBillYear === 'all') return true;
+    return String(r.getAttribute('data-tahun') || '') === selectedBillYear;
+  });
 }
 
 function syncCards(tableBodyId, rows) {
@@ -1380,9 +1492,9 @@ function formatRp(n) {
 function formatNovaDisplay(va) {
   let n = String(va ?? '').replace(/\s+/g, '');
   if (!n || n === '-') return '-';
-  n = n.replace(/^(797777|96240|797783|757777|797766|751000|77726)/, '');
+  n = n.replace(/^(797777|96240|797783|757777|797766|751000|777726|77726)/, '');
   n = n.replace(/^0+/, '') || n;
-  return n ? ('77726' + n) : '-';
+  return n ? ('777726' + n.padStart(10, '0')) : '-';
 }
 
 function esc(s) {
@@ -1704,7 +1816,7 @@ async function prosesPembayaran() {
           <div class="va-number" id="vaNumberText">${esc(va)}</div>
           <button type="button" class="btn-copy" onclick="copyVa()">Salin nomor VA</button>
           <p class="va-meta">Total: <b>${formatRp(total)}</b></p>
-          <p class="va-help">Bayar ke nomor VA di atas (kode bank 77726 Open Payment).</p>
+          <p class="va-help">Bayar ke nomor VA di atas (kode bank 777726 Open Payment).</p>
         </div>`;
       const actions = document.getElementById('payActions');
       if (actions) {
@@ -1720,15 +1832,19 @@ async function prosesPembayaran() {
   }
 }
 
-function copyVa() {
-  const va = (document.getElementById('vaNumberText')?.textContent || '').trim();
-  if (!va) return;
+function copyNova(elId) {
+  const va = (document.getElementById(elId || 'novaText')?.textContent || '').replace(/\s+/g, '');
+  if (!va || va === '-') return;
   const done = () => Swal.fire({ icon: 'success', title: 'Tersalin', text: 'Nomor VA sudah disalin.', timer: 1400, showConfirmButton: false, ...swalTheme() });
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(va).then(done).catch(() => fallbackCopy(va, done));
   } else {
     fallbackCopy(va, done);
   }
+}
+
+function copyVa() {
+  copyNova('vaNumberText');
 }
 
 function fallbackCopy(va, done) {

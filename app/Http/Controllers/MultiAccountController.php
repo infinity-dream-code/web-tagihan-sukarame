@@ -29,6 +29,12 @@ class MultiAccountController extends Controller
         if (!empty($result['data'])) {
             $nocust = $result['data']['no_cust'] ?? $result['data']['va_number'] ?? $fallback;
             $result['data']['va_number'] = TagihanController::formatNova($nocust);
+            $result['data']['kelompok'] = $result['data']['kelompok']
+                ?? $result['data']['jurusan']
+                ?? '-';
+            $result['data']['angkatan'] = $result['data']['angkatan']
+                ?? $result['data']['tahun_akademik']
+                ?? '-';
             $result = TagihanController::normalizeBillAmounts($result);
         }
 
@@ -37,18 +43,11 @@ class MultiAccountController extends Controller
 
     private function fetchTagihan(string $va, string $academicYear): array
     {
-        $payload = [
-            'va' => TagihanController::normalizeVa($va),
+        $json = TagihanController::postWsWithVaCandidates('cek-tagihan', [
             'tahun_akademik' => $academicYear,
-        ];
+        ], $va);
 
-        $response = Http::timeout(30)
-            ->withoutVerifying()
-            ->acceptJson()
-            ->asJson()
-            ->post($this->wsUrl('cek-tagihan'), $payload);
-
-        return $this->withNova($response->json(), $va);
+        return $this->withNova($json, $va);
     }
 
     private function requireActiveSession(): ?array

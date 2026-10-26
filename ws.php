@@ -206,11 +206,7 @@ class Tagihan
 
     public function cekTagihanByVAPw($va_number, $password, $tahun_akademik = null)
     {
-        $num2nd = $this->stripVa($va_number);
-
-        $stmtUser = $this->db->prepare("SELECT userlogin, kunci FROM sm_user WHERE userlogin = :userlogin LIMIT 1");
-        $stmtUser->execute([':userlogin' => $num2nd]);
-        $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
+        $user = $this->findUserByVa($va_number);
         if (!$user || $user['kunci'] !== sha1($password)) {
             return null;
         }
@@ -223,25 +219,78 @@ class Tagihan
         return $this->attachTagihan($siswa, $va_number, $tahun_akademik);
     }
 
-    private function stripVa($va_number)
+    private function vaCandidates($va_number)
     {
-        $va_number = preg_replace('/\s+/', '', (string) $va_number);
+        $raw = preg_replace('/\s+/', '', (string) $va_number);
+        if ($raw === '') {
+            return [];
+        }
 
-        foreach (['797777', '96240', '797783', '751000', '797766', '757777', '77726'] as $prefix) {
-            if (strpos($va_number, $prefix) === 0) {
-                $va_number = substr($va_number, strlen($prefix));
+        $prefixes = ['777726', '797777', '757777', '797766', '751000', '797783', '77726', '96240'];
+        $afterPrefix = $raw;
+        foreach ($prefixes as $prefix) {
+            if (strpos($raw, $prefix) === 0 && strlen($raw) > strlen($prefix)) {
+                $afterPrefix = substr($raw, strlen($prefix));
                 break;
             }
         }
 
-        $trimmed = ltrim($va_number, '0');
+        $trimmed = ltrim($afterPrefix, '0');
+        if ($trimmed === '') {
+            $trimmed = $afterPrefix;
+        }
 
-        return $trimmed !== '' ? $trimmed : $va_number;
+        $padded = str_pad($trimmed, 10, '0', STR_PAD_LEFT);
+
+        return array_values(array_unique(array_filter([
+            $raw,
+            $afterPrefix,
+            $trimmed,
+            $padded,
+            '777726'.$padded,
+            '777726'.$trimmed,
+        ])));
+    }
+
+    private function stripVa($va_number)
+    {
+        $candidates = $this->vaCandidates($va_number);
+        if (!$candidates) {
+            return '';
+        }
+
+        $afterPrefix = $candidates[1] ?? $candidates[0];
+        $trimmed = ltrim($afterPrefix, '0');
+
+        return $trimmed !== '' ? $trimmed : $afterPrefix;
+    }
+
+    private function findUserByVa($va_number)
+    {
+        $candidates = $this->vaCandidates($va_number);
+        if (!$candidates) {
+            return null;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($candidates), '?'));
+        $sql = "SELECT userlogin, kunci FROM sm_user
+            WHERE userlogin IN ($placeholders)
+               OR TRIM(LEADING '0' FROM userlogin) IN ($placeholders)
+            LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(array_merge($candidates, $candidates));
+
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     private function getSiswaByVa($va_number)
     {
-        $num2nd = $this->stripVa($va_number);
+        $candidates = $this->vaCandidates($va_number);
+        if (!$candidates) {
+            return null;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($candidates), '?'));
         $sql = "
         SELECT 
             c.CUSTID AS id,
@@ -252,16 +301,22 @@ class Tagihan
             c.DESC02 AS kelas,
             c.CODE03 AS kode_jurusan,
             c.DESC03 AS jurusan,
+            c.DESC03 AS kelompok,
             c.DESC04 AS tahun_akademik,
+            c.DESC04 AS angkatan,
             c.DESC05 AS alamat,
             c.GENUS AS orangtua,
             c.LastUpdate AS updated_at
         FROM scctcust c
-        WHERE c.NOCUST = :nocust
+        WHERE c.NOCUST IN ($placeholders)
+           OR c.NUM2ND IN ($placeholders)
+           OR TRIM(LEADING '0' FROM c.NOCUST) IN ($placeholders)
+           OR TRIM(LEADING '0' FROM c.NUM2ND) IN ($placeholders)
         LIMIT 1
     ";
+        $params = array_merge($candidates, $candidates, $candidates, $candidates);
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':nocust' => $num2nd]);
+        $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 

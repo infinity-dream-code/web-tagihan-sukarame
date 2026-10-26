@@ -20,17 +20,67 @@ class TagihanController extends Controller
         return $url;
     }
 
-    public static function normalizeVa(?string $va): string
+    public static function vaPrefix(): string
     {
-        $va = preg_replace('/\s+/', '', (string) $va);
+        return '777726';
+    }
 
-        if (preg_match('/^(797777|96240|797783|757777|797766|751000|77726)(\d+)$/', $va, $m)) {
-            $va = $m[2];
+    public static function vaPrefixes(): array
+    {
+        $prefixes = ['797777', '96240', '797783', '757777', '797766', '751000', '777726', '77726'];
+        usort($prefixes, fn ($a, $b) => strlen($b) <=> strlen($a));
+
+        return $prefixes;
+    }
+
+    public static function vaSuffixLength(): int
+    {
+        return max(1, 16 - strlen(self::vaPrefix()));
+    }
+
+    public static function vaCandidates(?string $va): array
+    {
+        $raw = preg_replace('/\s+/', '', (string) $va);
+        if ($raw === '' || $raw === '-') {
+            return [];
         }
 
-        $nocust = ltrim($va, '0');
+        $afterPrefix = $raw;
+        foreach (self::vaPrefixes() as $prefix) {
+            if (str_starts_with($raw, $prefix) && strlen($raw) > strlen($prefix)) {
+                $afterPrefix = substr($raw, strlen($prefix));
+                break;
+            }
+        }
 
-        return $nocust !== '' ? $nocust : $va;
+        $trimmed = ltrim($afterPrefix, '0');
+        if ($trimmed === '') {
+            $trimmed = $afterPrefix;
+        }
+
+        $padded = str_pad($trimmed, self::vaSuffixLength(), '0', STR_PAD_LEFT);
+
+        return array_values(array_unique(array_filter([
+            $raw,
+            $afterPrefix,
+            $trimmed,
+            $padded,
+            self::vaPrefix().$padded,
+            self::vaPrefix().$trimmed,
+        ], fn ($v) => $v !== '' && $v !== '-')));
+    }
+
+    public static function normalizeVa(?string $va): string
+    {
+        $candidates = self::vaCandidates($va);
+        if (!$candidates) {
+            return preg_replace('/\s+/', '', (string) $va);
+        }
+
+        $afterPrefix = $candidates[1] ?? $candidates[0];
+        $trimmed = ltrim($afterPrefix, '0');
+
+        return $trimmed !== '' ? $trimmed : $afterPrefix;
     }
 
     public static function formatNova(?string $nocust): string
@@ -41,7 +91,48 @@ class TagihanController extends Controller
             return '-';
         }
 
-        return '77726'.$n;
+        return self::vaPrefix().str_pad($n, self::vaSuffixLength(), '0', STR_PAD_LEFT);
+    }
+
+    public static function postWsWithVaCandidates(string $path, array $payload, ?string $vaInput = null): array
+    {
+        $url = rtrim(config('services.tagihan_ws.url'), '?&');
+        $url .= (str_contains($url, '?') ? '&' : '?').'path='.$path;
+
+        $candidates = self::vaCandidates($vaInput ?? ($payload['va'] ?? ''));
+        if (!$candidates) {
+            $candidates = [preg_replace('/\s+/', '', (string) ($payload['va'] ?? ''))];
+        }
+
+        $last = ['status' => false, 'message' => 'VA atau password salah, atau data tidak ditemukan'];
+
+        foreach ($candidates as $candidate) {
+            $try = $payload;
+            $try['va'] = $candidate;
+
+            try {
+                $response = Http::timeout(30)
+                    ->withoutVerifying()
+                    ->acceptJson()
+                    ->asJson()
+                    ->post($url, $try);
+
+                $json = $response->json();
+                if (is_array($json) && !empty($json['status'])) {
+                    return $json;
+                }
+                if (is_array($json)) {
+                    $last = $json;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('WS VA candidate failed', [
+                    'path' => $path,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $last;
     }
 
     public function cek(Request $request)
@@ -76,40 +167,24 @@ class TagihanController extends Controller
             'academic_year' => 'nullable|string'
         ]);
 
-        $academicYear = 'all';
-
-        $payload = [
-            'va' => self::normalizeVa($request->no_cust),
-            'password' => $request->password,
-            'tahun_akademik' => $academicYear
-        ];
-
-        $response = Http::timeout(30)
-            ->withoutVerifying()
-            ->acceptJson()
-            ->asJson()
-            ->post($this->wsUrl('cek-tagihan-pw'), $payload);
-
-        if ($response->status() === 404) {
-            $response = Http::timeout(30)
-                ->withoutVerifying()
-                ->acceptJson()
-                ->asJson()
-                ->post($this->wsUrl('cek-tagihan'), $payload);
+        $academicYear = $request->input('academic_year', 'all');
+        if (!is_string($academicYear) || $academicYear === '' || stripos($academicYear, 'Semua') !== false) {
+            $academicYear = 'all';
         }
 
-        $json = $response->json();
-        if (!is_array($json)) {
-            Log::error('WS cek-tagihan-pw invalid response', [
-                'url' => $this->wsUrl('cek-tagihan-pw'),
-                'va' => $payload['va'],
-                'http_status' => $response->status(),
-                'body' => substr($response->body(), 0, 2000),
-            ]);
-        } else {
-            Log::info('WS cek-tagihan-pw response', [
-                'va' => $payload['va'],
-                'http_status' => $response->status(),
+        $payload = [
+            'password' => $request->password,
+            'tahun_akademik' => 'all'
+        ];
+
+        $json = self::postWsWithVaCandidates('cek-tagihan-pw', $payload, $request->no_cust);
+        if (empty($json['status'])) {
+            $json = self::postWsWithVaCandidates('cek-tagihan', $payload, $request->no_cust);
+        }
+
+        if (empty($json['status'])) {
+            Log::info('WS cek-tagihan-pw failed', [
+                'va' => self::normalizeVa($request->no_cust),
                 'status' => $json['status'] ?? null,
                 'message' => $json['message'] ?? null,
             ]);
@@ -208,6 +283,15 @@ class TagihanController extends Controller
         if (!empty($result['data'])) {
             $nocust = $result['data']['no_cust'] ?? $result['data']['va_number'] ?? $fallback;
             $result['data']['va_number'] = self::formatNova($nocust);
+            $result['data']['kelompok'] = $result['data']['kelompok']
+                ?? $result['data']['jurusan']
+                ?? $result['data']['DESC03']
+                ?? '-';
+            $result['data']['angkatan'] = $result['data']['angkatan']
+                ?? $result['data']['tahun_akademik']
+                ?? $result['data']['tahun_masuk']
+                ?? $result['data']['DESC04']
+                ?? '-';
             $result = self::normalizeBillAmounts($result);
         }
 
@@ -451,6 +535,31 @@ class TagihanController extends Controller
                 'message' => 'Terjadi kesalahan saat membuat nomor VA',
             ], 500);
         }
+    }
+
+    public function filterTahun(Request $request)
+    {
+        $session = session('tagihan');
+        if (!is_array($session) || empty($session['active_no_cust'])) {
+            return redirect('/')->with('error', 'Sesi akun tidak ditemukan. Silakan login ulang.');
+        }
+
+        $academicYear = $request->input('academic_year', 'all');
+        if (!is_string($academicYear) || $academicYear === '' || stripos($academicYear, 'Semua') !== false) {
+            $academicYear = 'all';
+        }
+
+        $va = $session['va_display'] ?? $session['active_no_cust'];
+        $json = self::postWsWithVaCandidates('cek-tagihan', [
+            'tahun_akademik' => $academicYear,
+        ], $va);
+
+        $result = $this->withNova($json, $va);
+        if (empty($result['status'])) {
+            return back()->with('error', $result['message'] ?? 'Gagal memfilter tagihan');
+        }
+
+        return $this->renderIndex3AfterLogin($result, self::formatNova($result['data']['no_cust'] ?? $va), $academicYear);
     }
 
     public function listTahunAkademik()
