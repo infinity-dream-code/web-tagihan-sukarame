@@ -38,21 +38,39 @@ class TagihanController extends Controller
         return max(1, 16 - strlen(self::vaPrefix()));
     }
 
-    public static function vaCandidates(?string $va): array
+    public static function stripVaPrefix(?string $va): string
     {
-        $raw = preg_replace('/\s+/', '', (string) $va);
-        if ($raw === '' || $raw === '-') {
-            return [];
+        $va = preg_replace('/\D+/', '', (string) $va);
+        if ($va === '') {
+            return '';
         }
 
-        $afterPrefix = $raw;
-        foreach (self::vaPrefixes() as $prefix) {
-            if (str_starts_with($raw, $prefix) && strlen($raw) > strlen($prefix)) {
-                $afterPrefix = substr($raw, strlen($prefix));
+        $prefixes = self::vaPrefixes();
+        for ($i = 0; $i < 4; $i++) {
+            $hit = false;
+            foreach ($prefixes as $prefix) {
+                if (str_starts_with($va, $prefix) && strlen($va) > strlen($prefix)) {
+                    $va = substr($va, strlen($prefix));
+                    $hit = true;
+                    break;
+                }
+            }
+            if (!$hit) {
                 break;
             }
         }
 
+        return $va;
+    }
+
+    public static function vaCandidates(?string $va): array
+    {
+        $raw = preg_replace('/\D+/', '', (string) $va);
+        if ($raw === '') {
+            return [];
+        }
+
+        $afterPrefix = self::stripVaPrefix($raw);
         $trimmed = ltrim($afterPrefix, '0');
         if ($trimmed === '') {
             $trimmed = $afterPrefix;
@@ -61,23 +79,20 @@ class TagihanController extends Controller
         $padded = str_pad($trimmed, self::vaSuffixLength(), '0', STR_PAD_LEFT);
 
         return array_values(array_unique(array_filter([
-            $raw,
-            $afterPrefix,
             $trimmed,
             $padded,
-            self::vaPrefix().$padded,
-            self::vaPrefix().$trimmed,
-        ], fn ($v) => $v !== '' && $v !== '-')));
+            $afterPrefix,
+            $raw,
+        ], fn ($v) => $v !== '')));
     }
 
     public static function normalizeVa(?string $va): string
     {
-        $candidates = self::vaCandidates($va);
-        if (!$candidates) {
-            return preg_replace('/\s+/', '', (string) $va);
+        $afterPrefix = self::stripVaPrefix($va);
+        if ($afterPrefix === '') {
+            return '';
         }
 
-        $afterPrefix = $candidates[1] ?? $candidates[0];
         $trimmed = ltrim($afterPrefix, '0');
 
         return $trimmed !== '' ? $trimmed : $afterPrefix;
@@ -281,7 +296,13 @@ class TagihanController extends Controller
         }
 
         if (!empty($result['data'])) {
-            $nocust = $result['data']['no_cust'] ?? $result['data']['va_number'] ?? $fallback;
+            $nocust = self::normalizeVa(
+                $result['data']['no_cust']
+                    ?? $result['data']['num2nd']
+                    ?? $result['data']['va_number']
+                    ?? $fallback
+            );
+            $result['data']['no_cust'] = $nocust !== '' ? $nocust : ($result['data']['no_cust'] ?? $fallback);
             $result['data']['va_number'] = self::formatNova($nocust);
             $result['data']['kelompok'] = $result['data']['kelompok']
                 ?? $result['data']['jurusan']

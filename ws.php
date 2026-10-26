@@ -254,15 +254,24 @@ class Tagihan
 
     private function stripVa($va_number)
     {
-        $candidates = $this->vaCandidates($va_number);
-        if (!$candidates) {
-            return '';
+        $va = preg_replace('/\D+/', '', (string) $va_number);
+        $prefixes = ['777726', '797777', '757777', '797766', '751000', '797783', '77726', '96240'];
+        for ($i = 0; $i < 4; $i++) {
+            $hit = false;
+            foreach ($prefixes as $prefix) {
+                if (strpos($va, $prefix) === 0 && strlen($va) > strlen($prefix)) {
+                    $va = substr($va, strlen($prefix));
+                    $hit = true;
+                    break;
+                }
+            }
+            if (!$hit) {
+                break;
+            }
         }
+        $trimmed = ltrim($va, '0');
 
-        $afterPrefix = $candidates[1] ?? $candidates[0];
-        $trimmed = ltrim($afterPrefix, '0');
-
-        return $trimmed !== '' ? $trimmed : $afterPrefix;
+        return $trimmed !== '' ? $trimmed : $va;
     }
 
     private function findUserByVa($va_number)

@@ -93,8 +93,24 @@ class MultiAccountService
         string $password,
         string $newAcademicYear
     ): array {
+        $cek = TagihanController::postWsWithVaCandidates('cek-tagihan-pw', [
+            'password' => $password,
+            'tahun_akademik' => 'all',
+        ], $newVa);
+
+        if (empty($cek['status']) || empty($cek['data'])) {
+            return [
+                'status' => false,
+                'message' => $cek['message'] ?? 'VA/NIS atau password salah, atau data tidak ditemukan',
+            ];
+        }
+
+        $resolvedNis = TagihanController::normalizeVa(
+            $cek['data']['no_cust'] ?? $cek['data']['num2nd'] ?? $newVa
+        );
+
         $result = ['status' => false, 'message' => 'Gagal menambahkan multi akun'];
-        foreach (TagihanController::vaCandidates($newVa) as $candidate) {
+        foreach (array_unique(array_filter([$resolvedNis, ...TagihanController::vaCandidates($newVa)])) as $candidate) {
             $result = self::postWs('multi-akun-tambah', [
                 'active_va' => TagihanController::normalizeVa($activeVa),
                 'active_tahun_akademik' => $activeAcademicYear,

@@ -359,12 +359,7 @@ h1{font-size:1.15rem}
           </div>
         </div>
       </div>
-      <div class="field">
-        <label>Tahun akademik / pelajaran</label>
-        <select name="academic_year" id="academic_year" aria-label="Tahun akademik">
-          <option value="all" {{ ($academic_year ?? 'all') === 'all' ? 'selected' : '' }}>Semua tahun akademik</option>
-        </select>
-      </div>
+      <input type="hidden" name="academic_year" id="academic_year" value="all">
       @if(config('services.turnstile.enabled'))
       <div class="field">
         <label>Verifikasi keamanan <em>*</em></label>
@@ -437,7 +432,11 @@ h1{font-size:1.15rem}
           <div class="sf"><label>Kelompok</label><p>{{ $kelompokSiswa }}</p></div>
           <div class="sf"><label>Angkatan / Tahun masuk</label><p>{{ $angkatanSiswa }}</p></div>
           <div class="sf"><label>Saldo VA</label><p>Rp {{ number_format($result['data']['saldo'] ?? 0, 0, ',', '.') }}</p></div>
-          @php $novaSiswa = $result['data']['va_number'] ?? '-'; @endphp
+          @php
+            $novaSiswa = \App\Http\Controllers\TagihanController::formatNova(
+              $result['data']['no_cust'] ?? $result['data']['va_number'] ?? '-'
+            );
+          @endphp
           <div class="sf">
             <label>NOVA</label>
             <div class="nova-row">
@@ -993,46 +992,29 @@ function collectBillYears() {
 }
 
 function fillYearSelects() {
-  const localYears = collectBillYears();
-  const selects = [document.getElementById('academic_year'), document.getElementById('billYearFilter')].filter(Boolean);
-  const apply = (years) => {
-    selects.forEach(s => {
-      const current = s.value || preselectedYear || 'all';
-      const keepFirst = s.querySelector('option[value="all"]');
-      s.innerHTML = '';
-      const def = document.createElement('option');
-      def.value = 'all';
-      def.textContent = 'Semua tahun akademik';
-      s.appendChild(keepFirst ? def : def);
-      years.forEach(y => {
-        const o = document.createElement('option');
-        o.value = y;
-        o.textContent = y;
-        s.appendChild(o);
-      });
-      const match = Array.from(s.options).find(o => o.value === current);
-      s.value = match ? current : 'all';
-    });
-    selectedBillYear = (document.getElementById('billYearFilter') || {}).value || 'all';
-    applyBillYearFilter(false);
-  };
-
-  apply(localYears);
-  fetch('/list-tahun-akademik')
-    .then(r => r.json())
-    .then(data => {
-      const apiYears = (data && data.status && Array.isArray(data.data))
-        ? data.data.map(i => i.thn_aka).filter(Boolean)
-        : [];
-      apply(Array.from(new Set([...apiYears, ...localYears])));
-    })
-    .catch(() => {});
+  const years = collectBillYears();
+  const s = document.getElementById('billYearFilter');
+  if (!s) return;
+  const current = s.value || 'all';
+  s.innerHTML = '';
+  const def = document.createElement('option');
+  def.value = 'all';
+  def.textContent = 'Semua tahun akademik';
+  s.appendChild(def);
+  years.forEach(y => {
+    const o = document.createElement('option');
+    o.value = y;
+    o.textContent = y;
+    s.appendChild(o);
+  });
+  const match = Array.from(s.options).find(o => o.value === current);
+  s.value = match ? current : 'all';
+  selectedBillYear = s.value || 'all';
+  applyBillYearFilter(false);
 }
 
 function onBillYearChange(sel) {
   selectedBillYear = sel.value || 'all';
-  const loginSel = document.getElementById('academic_year');
-  if (loginSel) loginSel.value = selectedBillYear;
   applyBillYearFilter(true);
 }
 
@@ -1490,9 +1472,20 @@ function formatRp(n) {
 }
 
 function formatNovaDisplay(va) {
-  let n = String(va ?? '').replace(/\s+/g, '');
-  if (!n || n === '-') return '-';
-  n = n.replace(/^(797777|96240|797783|757777|797766|751000|777726|77726)/, '');
+  let n = String(va ?? '').replace(/\D+/g, '');
+  if (!n) return '-';
+  const prefixes = ['777726', '797777', '757777', '797766', '751000', '797783', '77726', '96240'];
+  for (let i = 0; i < 4; i++) {
+    let hit = false;
+    for (const p of prefixes) {
+      if (n.startsWith(p) && n.length > p.length) {
+        n = n.slice(p.length);
+        hit = true;
+        break;
+      }
+    }
+    if (!hit) break;
+  }
   n = n.replace(/^0+/, '') || n;
   return n ? ('777726' + n.padStart(10, '0')) : '-';
 }
