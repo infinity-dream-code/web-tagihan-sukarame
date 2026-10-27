@@ -136,7 +136,14 @@ class MultiAccountService
         ], $newVa);
 
         if (empty($cek['status']) || empty($cek['data'])) {
-            Log::info('multi-akun cek-tagihan-pw failed', [
+            $cek = TagihanController::postWsWithVaCandidates('cek-tagihan', [
+                'password' => $password,
+                'tahun_akademik' => 'all',
+            ], $newVa);
+        }
+
+        if (empty($cek['status']) || empty($cek['data'])) {
+            Log::info('multi-akun cek akun failed', [
                 'va' => TagihanController::normalizeVa($newVa),
                 'message' => $cek['message'] ?? null,
             ]);
