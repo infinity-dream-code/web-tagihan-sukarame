@@ -19,5 +19,6 @@ yarn-error.log
 /.vscode
 ws/*
 !ws/index.php
+!ws/ubah-password.php
 !ws/config/
 !ws/config/database.php

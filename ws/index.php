@@ -57,12 +57,7 @@ switch ($path) {
         break;
 
     case 'ubah-password':
-        $result = $tagihan->ubahPassword($va, $password, $passwordBaru);
-        if (!is_array($result)) {
-            $result = ['status' => false, 'message' => 'Gagal mengubah password'];
-        }
-        $result['data'] = $result['data'] ?? null;
-        echo json_encode($result);
+        require __DIR__ . '/ubah-password.php';
         break;
 
     case 'list-tahun-aka':

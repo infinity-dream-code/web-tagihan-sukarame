@@ -663,18 +663,16 @@ class TagihanController extends Controller
             ], 401);
         }
 
-        $va = $session['active_no_cust'];
-        $oldPassword = (string) $request->current_password;
-        $newPassword = (string) $request->password;
+        $json = self::postWsUbahPassword(
+            $session['active_no_cust'],
+            (string) $request->current_password,
+            (string) $request->password
+        );
 
-        $json = \App\Services\BillingTagihanService::ubahPassword($va, $oldPassword, $newPassword);
-
-        if (!is_array($json) || empty($json['status'])) {
+        if (empty($json['status'])) {
             return response()->json([
                 'status' => false,
-                'message' => is_array($json)
-                    ? ($json['message'] ?? 'Gagal mengubah password')
-                    : 'Server web tidak bisa konek ke database billing. Kosongkan WS_DB_* di .env bila host-nya jaringan internal.',
+                'message' => $json['message'] ?? 'Gagal mengubah password',
             ], 422);
         }
 
@@ -682,6 +680,63 @@ class TagihanController extends Controller
             'status' => true,
             'message' => $json['message'] ?? 'Password berhasil diubah',
         ]);
+    }
+
+    private static function postWsUbahPassword(string $va, string $oldPassword, string $newPassword): array
+    {
+        $url = rtrim(config('services.tagihan_ws.url'), '?&');
+        $url .= (str_contains($url, '?') ? '&' : '?').'path=ubah-password';
+
+        $candidates = array_values(array_unique(array_filter([
+            self::normalizeVa($va),
+            self::formatNova($va),
+        ], fn ($v) => $v !== '' && $v !== '-')));
+
+        $last = ['status' => false, 'message' => 'Gagal mengubah password'];
+
+        foreach ($candidates as $candidate) {
+            $payload = [
+                'va' => $candidate,
+                'password' => $oldPassword,
+                'password_baru' => $newPassword,
+            ];
+
+            try {
+                $response = Http::timeout(15)
+                    ->withoutVerifying()
+                    ->acceptJson()
+                    ->asJson()
+                    ->post($url, $payload);
+                $json = $response->json();
+                if (is_array($json) && !empty($json['status'])) {
+                    return $json;
+                }
+
+                $form = Http::timeout(15)
+                    ->withoutVerifying()
+                    ->acceptJson()
+                    ->asForm()
+                    ->post($url, $payload);
+                $formJson = $form->json();
+                if (is_array($formJson) && !empty($formJson['status'])) {
+                    return $formJson;
+                }
+
+                if (is_array($json)) {
+                    $last = $json;
+                } elseif (is_array($formJson)) {
+                    $last = $formJson;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('WS ubah-password failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        if (stripos((string) ($last['message'] ?? ''), 'Endpoint tidak ditemukan') !== false) {
+            $last['message'] = 'Endpoint ubah-password belum ada di WS. Upload ws/ubah-password.php dan tambah case-nya di index.php WS.';
+        }
+
+        return $last;
     }
 
     public function logout(Request $request)
