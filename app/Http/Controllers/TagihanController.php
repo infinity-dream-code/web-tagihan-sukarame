@@ -663,15 +663,35 @@ class TagihanController extends Controller
             ], 401);
         }
 
-        $json = self::postWsWithVaCandidates('ubah-password', [
-            'password' => $request->current_password,
-            'password_baru' => $request->password,
-        ], $session['active_no_cust']);
+        $va = $session['active_no_cust'];
+        $oldPassword = (string) $request->current_password;
+        $newPassword = (string) $request->password;
 
-        if (empty($json['status'])) {
+        $json = \App\Services\BillingTagihanService::ubahPassword($va, $oldPassword, $newPassword);
+
+        if (!is_array($json)) {
+            $json = self::postLocalWsUbahPassword($request, $va, $oldPassword, $newPassword);
+        }
+
+        if (!is_array($json) || (empty($json['status']) && self::isMissingEndpoint($json['message'] ?? ''))) {
+            $remote = self::postWsWithVaCandidates('ubah-password', [
+                'password' => $oldPassword,
+                'password_baru' => $newPassword,
+            ], $va);
+            if (is_array($remote) && (!empty($remote['status']) || !self::isMissingEndpoint($remote['message'] ?? ''))) {
+                $json = $remote;
+            }
+        }
+
+        if (!is_array($json) || empty($json['status'])) {
+            $message = is_array($json) ? ($json['message'] ?? '') : '';
+            if (self::isMissingEndpoint($message) || $message === '') {
+                $message = 'Gagal mengubah password. Database billing belum terhubung (isi WS_DB_* di .env).';
+            }
+
             return response()->json([
                 'status' => false,
-                'message' => $json['message'] ?? 'Gagal mengubah password',
+                'message' => $message,
             ], 422);
         }
 
@@ -679,6 +699,35 @@ class TagihanController extends Controller
             'status' => true,
             'message' => $json['message'] ?? 'Password berhasil diubah',
         ]);
+    }
+
+    private static function isMissingEndpoint(string $message): bool
+    {
+        return stripos($message, 'Endpoint tidak ditemukan') !== false
+            || stripos($message, 'endpoint tidak di temukan') !== false;
+    }
+
+    private static function postLocalWsUbahPassword(Request $request, string $va, string $oldPassword, string $newPassword): ?array
+    {
+        try {
+            $url = $request->getSchemeAndHttpHost().'/ws-tagihan?path=ubah-password';
+            $response = Http::timeout(20)
+                ->withoutVerifying()
+                ->acceptJson()
+                ->asJson()
+                ->post($url, [
+                    'va' => $va,
+                    'password' => $oldPassword,
+                    'password_baru' => $newPassword,
+                ]);
+            $json = $response->json();
+
+            return is_array($json) ? $json : null;
+        } catch (\Throwable $e) {
+            Log::warning('ubah password local WS failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     public function logout(Request $request)

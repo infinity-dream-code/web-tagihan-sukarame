@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\TagihanController;
+use Illuminate\Support\Facades\Log;
 use PDO;
 use Throwable;
 
@@ -13,9 +14,44 @@ class BillingTagihanService
         return (string) env('WS_DB_DATABASE', env('DB_DATABASE_DATA_MYSQL', '')) !== '';
     }
 
+    public static function ubahPassword(string $vaInput, string $oldPassword, string $newPassword): ?array
+    {
+        $tagihan = self::makeTagihan();
+        if (!$tagihan) {
+            return null;
+        }
+
+        $candidates = TagihanController::vaCandidates($vaInput);
+        if (!$candidates) {
+            $candidates = [preg_replace('/\D+/', '', $vaInput)];
+        }
+
+        $last = ['status' => false, 'message' => 'Gagal mengubah password'];
+        foreach ($candidates as $va) {
+            $result = $tagihan->ubahPassword($va, $oldPassword, $newPassword);
+            if (is_array($result) && !empty($result['status'])) {
+                return $result;
+            }
+            if (is_array($result)) {
+                $last = $result;
+            }
+        }
+
+        return $last;
+    }
+
     public static function cek(string $path, array $payload, ?string $vaInput = null): ?array
     {
-        if (!self::enabled()) {
+        if ($path === 'ubah-password') {
+            return self::ubahPassword(
+                (string) ($vaInput ?: ($payload['va'] ?? '')),
+                (string) ($payload['password'] ?? ''),
+                (string) ($payload['password_baru'] ?? '')
+            );
+        }
+
+        $tagihan = self::makeTagihan();
+        if (!$tagihan) {
             return null;
         }
 
@@ -25,30 +61,6 @@ class BillingTagihanService
         }
 
         try {
-            require_once base_path('ws/config/database.php');
-            require_once base_path('ws.php');
-
-            $tagihan = new \Tagihan(self::pdo());
-
-            if ($path === 'ubah-password') {
-                $last = ['status' => false, 'message' => 'Gagal mengubah password'];
-                foreach ($candidates as $va) {
-                    $result = $tagihan->ubahPassword(
-                        $va,
-                        (string) ($payload['password'] ?? ''),
-                        (string) ($payload['password_baru'] ?? '')
-                    );
-                    if (is_array($result) && !empty($result['status'])) {
-                        return $result;
-                    }
-                    if (is_array($result)) {
-                        $last = $result;
-                    }
-                }
-
-                return $last;
-            }
-
             $data = null;
 
             foreach ($candidates as $va) {
@@ -85,6 +97,34 @@ class BillingTagihanService
                 'data' => $data,
             ];
         } catch (Throwable $e) {
+            Log::warning('BillingTagihanService cek failed', ['error' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    private static function makeTagihan(): ?\Tagihan
+    {
+        $file = base_path('ws.php');
+        if (!is_file($file)) {
+            return null;
+        }
+
+        try {
+            $config = base_path('ws/config/database.php');
+            if (is_file($config)) {
+                require_once $config;
+            }
+            require_once $file;
+
+            if (self::enabled()) {
+                return new \Tagihan(self::pdo());
+            }
+
+            return new \Tagihan();
+        } catch (Throwable $e) {
+            Log::warning('BillingTagihanService koneksi gagal', ['error' => $e->getMessage()]);
+
             return null;
         }
     }

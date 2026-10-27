@@ -17,4 +17,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
-ws
+ws/*
+!ws/index.php
+!ws/config/
+!ws/config/database.php

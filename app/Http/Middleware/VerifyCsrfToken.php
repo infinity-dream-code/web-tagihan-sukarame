@@ -13,6 +13,7 @@ class VerifyCsrfToken extends Middleware
      */
      protected $except = [
         '/api/*',
-        '/pembayaran/buat-va'
+        '/pembayaran/buat-va',
+        '/ws-tagihan',
     ];
 }
