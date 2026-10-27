@@ -643,6 +643,44 @@ class TagihanController extends Controller
         }
     }
 
+    public function ubahPassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:3|confirmed',
+        ], [
+            'current_password.required' => 'Password saat ini wajib diisi',
+            'password.required' => 'Password baru wajib diisi',
+            'password.min' => 'Password baru minimal 3 karakter',
+            'password.confirmed' => 'Konfirmasi password tidak sama',
+        ]);
+
+        $session = session('tagihan');
+        if (!is_array($session) || empty($session['active_no_cust'])) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Sesi akun tidak ditemukan. Silakan cek tagihan ulang.',
+            ], 401);
+        }
+
+        $json = self::postWsWithVaCandidates('ubah-password', [
+            'password' => $request->current_password,
+            'password_baru' => $request->password,
+        ], $session['active_no_cust']);
+
+        if (empty($json['status'])) {
+            return response()->json([
+                'status' => false,
+                'message' => $json['message'] ?? 'Gagal mengubah password',
+            ], 422);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => $json['message'] ?? 'Password berhasil diubah',
+        ]);
+    }
+
     public function logout(Request $request)
     {
         $request->session()->forget('tagihan');

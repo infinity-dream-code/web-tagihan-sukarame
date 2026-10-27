@@ -419,6 +419,7 @@ h1{font-size:1.15rem}
           <div class="section-title">Data siswa</div>
           <div class="tbl-controls">
             <button type="button" class="btn-logout" id="btnLogout" onclick="logoutAkun()">Logout</button>
+            <button type="button" class="btn-showall" id="btnUbahPassword" onclick="openPasswordModal()">Ubah password</button>
             <button type="button" class="btn-showall" id="btnMultiAkun" onclick="openMultiAkunModal()">Multi akun</button>
           </div>
         </div>
@@ -883,6 +884,63 @@ h1{font-size:1.15rem}
   <input type="hidden" name="no_cust" id="maSwitchNoCust">
   <input type="hidden" name="academic_year" id="maSwitchYear" value="all">
 </form>
+
+<div id="passwordModal" class="modal-bg">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Ubah password</h3>
+      <button class="modal-x" onclick="closePasswordModal()" aria-label="Tutup" type="button">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="ma-section-label">Akun aktif</p>
+      <p style="margin:0 0 1rem;font-size:14px;font-weight:650;color:var(--text)">{{ $result['data']['nama'] ?? '-' }} · VA {{ $va ?? ($result['data']['va_number'] ?? '-') }}</p>
+      <div id="pwError" class="ma-error"></div>
+      <div id="pwSuccess" class="ma-success"></div>
+      <form id="ubahPasswordForm" onsubmit="return submitUbahPassword(event)">
+        @csrf
+        <div class="field">
+          <label>Password saat ini <em>*</em></label>
+          <div class="pw-wrap">
+            <input type="password" id="pwCurrent" name="current_password" placeholder="Password saat ini" required autocomplete="current-password">
+            <button type="button" class="pw-toggle" id="pwToggleCurrent" aria-label="Tampilkan password">
+              <svg class="pw-eye" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <svg class="pw-eye-off" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" hidden><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.223-3.444M6.18 6.18A9.966 9.966 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.974 9.974 0 01-4.245 5.253M3 3l18 18"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="field" style="margin-top:.85rem">
+          <label>Password baru <em>*</em></label>
+          <div class="pw-wrap">
+            <input type="password" id="pwNew" name="password" placeholder="Minimal 3 karakter" required autocomplete="new-password" minlength="3">
+            <button type="button" class="pw-toggle" id="pwToggleNew" aria-label="Tampilkan password">
+              <svg class="pw-eye" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <svg class="pw-eye-off" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" hidden><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.223-3.444M6.18 6.18A9.966 9.966 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.974 9.974 0 01-4.245 5.253M3 3l18 18"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="field" style="margin-top:.85rem">
+          <label>Konfirmasi password baru <em>*</em></label>
+          <div class="pw-wrap">
+            <input type="password" id="pwConfirm" name="password_confirmation" placeholder="Ulangi password baru" required autocomplete="new-password" minlength="3">
+            <button type="button" class="pw-toggle" id="pwToggleConfirm" aria-label="Tampilkan password">
+              <svg class="pw-eye" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <svg class="pw-eye-off" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" hidden><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.223-3.444M6.18 6.18A9.966 9.966 0 0112 5c4.477 0 8.268 2.943 9.542 7a9.974 9.974 0 01-4.245 5.253M3 3l18 18"/></svg>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="submit-btn" id="pwSubmitBtn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Simpan password
+        </button>
+      </form>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-close-full" onclick="closePasswordModal()" type="button">Tutup</button>
+    </div>
+  </div>
+</div>
 @endif
 
 <form id="logoutForm" method="POST" action="{{ route('logout') }}" style="display:none">
@@ -1217,6 +1275,7 @@ window.addEventListener('click', e => {
   if (e.target.id === 'detailModal') closeDetailModal();
   if (e.target.id === 'paymentModal') closePaymentModal();
   if (e.target.id === 'multiAkunModal') closeMultiAkunModal();
+  if (e.target.id === 'passwordModal') closePasswordModal();
   if (e.target.id === 'installModal') closeInstallModal();
 });
 
@@ -1241,8 +1300,124 @@ const viewOnly = @json($viewOnly);
 const generateVaUrl = @json(route('generate-va'));
 const multiAkunTambahUrl = @json(route('multi-akun.tambah'));
 const multiAkunHapusUrl = @json(route('multi-akun.hapus'));
+const ubahPasswordUrl = @json(route('password.ubah'));
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 let multiAkunAccounts = @json(isset($result) && !empty($result['status']) ? ($multiAccounts ?? []) : []);
+
+function bindPwToggle(btnId, fieldId) {
+  const btn = document.getElementById(btnId);
+  const field = document.getElementById(fieldId);
+  if (!btn || !field) return;
+  btn.addEventListener('click', () => {
+    const show = field.getAttribute('type') === 'password';
+    field.setAttribute('type', show ? 'text' : 'password');
+    btn.setAttribute('aria-label', show ? 'Sembunyikan password' : 'Tampilkan password');
+    const eye = btn.querySelector('.pw-eye');
+    const eyeOff = btn.querySelector('.pw-eye-off');
+    if (eye) eye.hidden = show;
+    if (eyeOff) eyeOff.hidden = !show;
+  });
+}
+
+function openPasswordModal() {
+  const modal = document.getElementById('passwordModal');
+  if (!modal) return;
+  clearPwMessages();
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('pwCurrent')?.focus();
+}
+
+function closePasswordModal() {
+  const modal = document.getElementById('passwordModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function clearPwMessages() {
+  const err = document.getElementById('pwError');
+  const ok = document.getElementById('pwSuccess');
+  if (err) { err.classList.remove('open'); err.textContent = ''; }
+  if (ok) { ok.classList.remove('open'); ok.textContent = ''; }
+}
+
+function showPwError(msg) {
+  const err = document.getElementById('pwError');
+  const ok = document.getElementById('pwSuccess');
+  if (ok) ok.classList.remove('open');
+  if (!err) return;
+  err.textContent = msg || 'Terjadi kesalahan';
+  err.classList.add('open');
+}
+
+function showPwSuccess(msg) {
+  const err = document.getElementById('pwError');
+  const ok = document.getElementById('pwSuccess');
+  if (err) err.classList.remove('open');
+  if (!ok) return;
+  ok.textContent = msg || 'Berhasil';
+  ok.classList.add('open');
+}
+
+async function submitUbahPassword(e) {
+  e.preventDefault();
+  clearPwMessages();
+  const current = String(document.getElementById('pwCurrent')?.value || '').trim();
+  const next = String(document.getElementById('pwNew')?.value || '').trim();
+  const confirmPw = String(document.getElementById('pwConfirm')?.value || '').trim();
+  const btn = document.getElementById('pwSubmitBtn');
+  if (!current || !next || !confirmPw) {
+    showPwError('Lengkapi semua kolom password');
+    return false;
+  }
+  if (next.length < 3) {
+    showPwError('Password baru minimal 3 karakter');
+    return false;
+  }
+  if (next !== confirmPw) {
+    showPwError('Konfirmasi password tidak sama');
+    return false;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '.7';
+  }
+  try {
+    const res = await fetch(ubahPasswordUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        current_password: current,
+        password: next,
+        password_confirmation: confirmPw
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    const firstError = data.errors ? Object.values(data.errors).flat()[0] : null;
+    if (!res.ok || !data.status) {
+      showPwError(data.message || firstError || 'Gagal mengubah password');
+      return false;
+    }
+    document.getElementById('pwCurrent').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
+    showPwSuccess(data.message || 'Password berhasil diubah');
+  } catch (err) {
+    showPwError('Terjadi kesalahan jaringan');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '';
+    }
+  }
+  return false;
+}
 
 function openMultiAkunModal() {
   const modal = document.getElementById('multiAkunModal');
@@ -1474,6 +1649,9 @@ async function submitTambahMultiAkun(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  bindPwToggle('pwToggleCurrent', 'pwCurrent');
+  bindPwToggle('pwToggleNew', 'pwNew');
+  bindPwToggle('pwToggleConfirm', 'pwConfirm');
   const toggleMaPw = document.getElementById('maTogglePassword');
   if (toggleMaPw) {
     toggleMaPw.addEventListener('click', () => {
@@ -1969,6 +2147,7 @@ function closePanduanModal() {
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
   closePanduanModal();
+  closePasswordModal();
 });
 
 function syncInstallModalState() {

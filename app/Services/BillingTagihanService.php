@@ -29,6 +29,26 @@ class BillingTagihanService
             require_once base_path('ws.php');
 
             $tagihan = new \Tagihan(self::pdo());
+
+            if ($path === 'ubah-password') {
+                $last = ['status' => false, 'message' => 'Gagal mengubah password'];
+                foreach ($candidates as $va) {
+                    $result = $tagihan->ubahPassword(
+                        $va,
+                        (string) ($payload['password'] ?? ''),
+                        (string) ($payload['password_baru'] ?? '')
+                    );
+                    if (is_array($result) && !empty($result['status'])) {
+                        return $result;
+                    }
+                    if (is_array($result)) {
+                        $last = $result;
+                    }
+                }
+
+                return $last;
+            }
+
             $data = null;
 
             foreach ($candidates as $va) {

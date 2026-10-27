@@ -14,6 +14,7 @@ Route::get('/', function () {
 });
 
 Route::post('/logout', [TagihanController::class, 'logout'])->name('logout');
+Route::post('/password/ubah', [TagihanController::class, 'ubahPassword'])->name('password.ubah');
 
 Route::get('/dua', function () {
     return view('index');

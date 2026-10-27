@@ -308,6 +308,54 @@ class Tagihan
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
+    public function ubahPassword($va_number, $oldPassword, $newPassword)
+    {
+        $oldPassword = trim((string) $oldPassword);
+        $newPassword = trim((string) $newPassword);
+        if ($newPassword === '') {
+            return ['status' => false, 'message' => 'Password baru tidak boleh kosong'];
+        }
+        if (strlen($newPassword) < 3) {
+            return ['status' => false, 'message' => 'Password baru minimal 3 karakter'];
+        }
+
+        $hash = sha1($newPassword);
+        $user = $this->findUserByVa($va_number);
+
+        if ($user) {
+            $stored = (string) ($user['kunci'] ?? '');
+            if ($stored !== '' && $stored !== sha1($oldPassword)) {
+                return ['status' => false, 'message' => 'Password saat ini salah'];
+            }
+
+            $stmt = $this->db->prepare('UPDATE sm_user SET kunci = ? WHERE userlogin = ?');
+            $stmt->execute([$hash, $user['userlogin']]);
+
+            return ['status' => true, 'message' => 'Password berhasil diubah'];
+        }
+
+        $siswa = $this->getSiswaByVa($va_number);
+        if (!$siswa) {
+            return ['status' => false, 'message' => 'Data siswa tidak ditemukan'];
+        }
+
+        $login = $this->stripVa($siswa['no_cust'] ?? $va_number);
+        if ($login === '') {
+            return ['status' => false, 'message' => 'NIS siswa tidak valid'];
+        }
+
+        try {
+            $stmt = $this->db->prepare('INSERT INTO sm_user (userlogin, kunci) VALUES (?, ?)');
+            $stmt->execute([$login, $hash]);
+        } catch (Exception $e) {
+            $this->logVa('ubahPassword insert failed', ['error' => $e->getMessage()]);
+
+            return ['status' => false, 'message' => 'Gagal menyimpan password ke sm_user'];
+        }
+
+        return ['status' => true, 'message' => 'Password berhasil disimpan'];
+    }
+
     private function getSiswaByVa($va_number)
     {
         $trimmed = $this->stripVa($va_number);
