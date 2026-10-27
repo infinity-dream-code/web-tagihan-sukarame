@@ -50,61 +50,15 @@ class BillingTagihanService
             );
         }
 
-        $tagihan = self::makeTagihan();
-        if (!$tagihan) {
-            return null;
-        }
-
-        $candidates = TagihanController::vaCandidates($vaInput ?: (string) ($payload['va'] ?? ''));
-        if (!$candidates) {
-            return null;
-        }
-
-        try {
-            $data = null;
-
-            foreach ($candidates as $va) {
-                if ($path === 'cek-tagihan-pw') {
-                    $data = $tagihan->cekTagihanByVAPw(
-                        $va,
-                        (string) ($payload['password'] ?? ''),
-                        $payload['tahun_akademik'] ?? 'all'
-                    );
-                } elseif ($path === 'cek-tagihan') {
-                    $data = $tagihan->cekTagihanByVA(
-                        $va,
-                        $payload['tahun_akademik'] ?? 'all'
-                    );
-                } else {
-                    return null;
-                }
-
-                if ($data) {
-                    break;
-                }
-            }
-
-            if (!$data) {
-                return [
-                    'status' => false,
-                    'message' => 'VA atau password salah, atau data tidak ditemukan',
-                ];
-            }
-
-            return [
-                'status' => true,
-                'message' => 'Data ditemukan',
-                'data' => $data,
-            ];
-        } catch (Throwable $e) {
-            Log::warning('BillingTagihanService cek failed', ['error' => $e->getMessage()]);
-
-            return null;
-        }
+        return null;
     }
 
     private static function makeTagihan(): ?\Tagihan
     {
+        if (!self::enabled()) {
+            return null;
+        }
+
         $file = base_path('ws.php');
         if (!is_file($file)) {
             return null;
@@ -117,11 +71,7 @@ class BillingTagihanService
             }
             require_once $file;
 
-            if (self::enabled()) {
-                return new \Tagihan(self::pdo());
-            }
-
-            return new \Tagihan();
+            return new \Tagihan(self::pdo());
         } catch (Throwable $e) {
             Log::warning('BillingTagihanService koneksi gagal', ['error' => $e->getMessage()]);
 
@@ -144,6 +94,8 @@ class BillingTagihanService
             [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_TIMEOUT => 3,
+                PDO::MYSQL_ATTR_CONNECT_TIMEOUT => 3,
             ]
         );
     }
