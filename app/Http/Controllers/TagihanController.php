@@ -121,6 +121,11 @@ class TagihanController extends Controller
 
         $last = ['status' => false, 'message' => 'VA atau password salah, atau data tidak ditemukan'];
 
+        $local = \App\Services\BillingTagihanService::cek($path, $payload, $vaInput);
+        if (is_array($local) && !empty($local['status'])) {
+            return $local;
+        }
+
         foreach ($candidates as $candidate) {
             $try = $payload;
             $try['va'] = $candidate;
@@ -136,8 +141,21 @@ class TagihanController extends Controller
                 if (is_array($json) && !empty($json['status'])) {
                     return $json;
                 }
+
+                $formResponse = Http::timeout(30)
+                    ->withoutVerifying()
+                    ->acceptJson()
+                    ->asForm()
+                    ->post($url, $try);
+                $formJson = $formResponse->json();
+                if (is_array($formJson) && !empty($formJson['status'])) {
+                    return $formJson;
+                }
+
                 if (is_array($json)) {
                     $last = $json;
+                } elseif (is_array($formJson)) {
+                    $last = $formJson;
                 }
             } catch (\Throwable $e) {
                 Log::warning('WS VA candidate failed', [
@@ -145,6 +163,10 @@ class TagihanController extends Controller
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+
+        if (is_array($local)) {
+            return $local;
         }
 
         return $last;
@@ -296,13 +318,10 @@ class TagihanController extends Controller
         }
 
         if (!empty($result['data'])) {
-            $nocust = self::normalizeVa(
-                $result['data']['no_cust']
-                    ?? $result['data']['num2nd']
-                    ?? $result['data']['va_number']
-                    ?? $fallback
-            );
-            $result['data']['no_cust'] = $nocust !== '' ? $nocust : ($result['data']['no_cust'] ?? $fallback);
+            $nocust = $result['data']['no_cust']
+                ?? $result['data']['num2nd']
+                ?? $result['data']['va_number']
+                ?? $fallback;
             $result['data']['va_number'] = self::formatNova($nocust);
             $result['data']['kelompok'] = $result['data']['kelompok']
                 ?? $result['data']['jurusan']

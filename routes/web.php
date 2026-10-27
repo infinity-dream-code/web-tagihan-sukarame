@@ -21,6 +21,9 @@ Route::get('/dua', function () {
 
 
 Route::get('/list-tahun-akademik', [TagihanController::class, 'listTahunAkademik']);
+Route::any('/ws-tagihan', function () {
+    require base_path('ws/index.php');
+});
 
 Route::post('/cek-tagihan', function (Request $request) {
     try {

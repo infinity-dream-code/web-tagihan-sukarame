@@ -504,7 +504,7 @@ h1{font-size:1.15rem}
                 $sudahBayar = (int)($tagih['sudah_dibayar'] ?? 0);
                 $totalTagih = (int)($tagih['total_tagihan'] ?? 0);
                 $sisaTagih = (int)($tagih['sisa_tagihan'] ?? max(0, $totalTagih - $sudahBayar));
-                $tahunTagih = $tagih['tahun_akademik_tagihan'] ?? '';
+                $tahunTagih = trim((string) ($tagih['tahun_akademik_tagihan'] ?? $tagih['BTA'] ?? ''));
               @endphp
               <tr data-index="{{ $i }}" data-tahun="{{ $tahunTagih }}">
                 @unless($viewOnly)
@@ -549,7 +549,7 @@ h1{font-size:1.15rem}
             $sudahBayar = (int)($tagih['sudah_dibayar'] ?? 0);
             $totalTagih = (int)($tagih['total_tagihan'] ?? 0);
             $sisaTagih = (int)($tagih['sisa_tagihan'] ?? max(0, $totalTagih - $sudahBayar));
-            $tahunTagih = $tagih['tahun_akademik_tagihan'] ?? '';
+            $tahunTagih = trim((string) ($tagih['tahun_akademik_tagihan'] ?? $tagih['BTA'] ?? ''));
           @endphp
           <article class="bill-card" data-index="{{ $i }}" data-tahun="{{ $tahunTagih }}">
             <div class="bill-card-top">
@@ -632,7 +632,7 @@ h1{font-size:1.15rem}
             </thead>
             <tbody id="lunasTableBody">
               @forelse($result['data']['tagihan_lunas'] ?? [] as $i => $tagih)
-              <tr data-index="{{ $i }}" data-tahun="{{ $tagih['tahun_akademik_tagihan'] ?? '' }}">
+              <tr data-index="{{ $i }}" data-tahun="{{ trim((string) ($tagih['tahun_akademik_tagihan'] ?? $tagih['BTA'] ?? '')) }}">
                 <td>{{ $i+1 }}</td>
                 <td>{{ $tagih['FURUTAN'] ?? '-' }}</td>
                 <td>{{ ucwords(str_replace('_', ' ', strtolower($tagih['nama_tagihan']))) }}</td>
@@ -649,7 +649,7 @@ h1{font-size:1.15rem}
         </div>
         <div class="card-list" id="lunasCardList">
           @forelse($result['data']['tagihan_lunas'] ?? [] as $i => $tagih)
-          <article class="bill-card" data-index="{{ $i }}" data-tahun="{{ $tagih['tahun_akademik_tagihan'] ?? '' }}">
+          <article class="bill-card" data-index="{{ $i }}" data-tahun="{{ trim((string) ($tagih['tahun_akademik_tagihan'] ?? $tagih['BTA'] ?? '')) }}">
             <div class="bill-card-top">
               <span class="badge badge-paid">Lunas</span>
               <button type="button" class="btn-detail" onclick="showLunasDetail({{ $i }})">Detail</button>
@@ -1031,12 +1031,23 @@ function applyBillYearFilter(resetPage) {
 
 window.onload = initTurnstile;
 
+function yearOf(el) {
+  return String(el.getAttribute('data-tahun') || '').trim();
+}
+
+function hideAllBillItems(tableBodyId) {
+  const el = document.getElementById(tableBodyId);
+  if (el) el.querySelectorAll('tr[data-index]').forEach(r => { r.style.display = 'none'; });
+  const cardList = document.getElementById(tableBodyId.replace('TableBody', 'CardList'));
+  if (cardList) cardList.querySelectorAll('[data-index]').forEach(c => { c.style.display = 'none'; });
+}
+
 function getRows(id) {
   const el = document.getElementById(id);
   if (!el) return [];
   return Array.from(el.querySelectorAll('tr[data-index]')).filter(r => {
     if (!selectedBillYear || selectedBillYear === 'all') return true;
-    return String(r.getAttribute('data-tahun') || '') === selectedBillYear;
+    return yearOf(r) === String(selectedBillYear).trim();
   });
 }
 
@@ -1046,24 +1057,26 @@ function syncCards(tableBodyId, rows) {
   const vis = {};
   rows.forEach(r => { vis[r.dataset.index] = r.style.display; });
   cardList.querySelectorAll('[data-index]').forEach(c => {
-    c.style.display = Object.prototype.hasOwnProperty.call(vis, c.dataset.index) ? vis[c.dataset.index] : 'none';
+    const matchYear = !selectedBillYear || selectedBillYear === 'all' || yearOf(c) === String(selectedBillYear).trim();
+    c.style.display = matchYear && Object.prototype.hasOwnProperty.call(vis, c.dataset.index) ? vis[c.dataset.index] : 'none';
   });
 }
 
 function paginateRows(rows, page, perPage, showAll, infoId, paginationFn, tableBodyId) {
+  if (tableBodyId) hideAllBillItems(tableBodyId);
   const total = rows.length;
-  rows.forEach(r => r.style.display = 'none');
-  if (showAll) { rows.forEach(r => r.style.display = ''); }
+  rows.forEach(r => { r.style.display = 'none'; });
+  if (showAll) { rows.forEach(r => { r.style.display = ''; }); }
   else {
     const start = (page - 1) * perPage;
     for (let i = start; i < Math.min(start + perPage, total); i++) rows[i].style.display = '';
   }
   if (tableBodyId) syncCards(tableBodyId, rows);
-  const s2 = showAll ? 1 : (page - 1) * perPage + 1;
+  const s2 = total === 0 ? 0 : (showAll ? 1 : (page - 1) * perPage + 1);
   const e2 = showAll ? total : Math.min(page * perPage, total);
   const inf = document.getElementById(infoId);
   if (inf) inf.textContent = `Menampilkan ${s2} – ${e2} dari ${total} data`;
-  paginationFn(showAll ? 1 : Math.ceil(total / perPage), total);
+  paginationFn(showAll ? 1 : Math.ceil(total / perPage || 0), total);
 }
 
 function renderPagination(id, totalPages, totalRows, showAll, getCurrent, goTo) {
@@ -1085,13 +1098,15 @@ function renderPagination(id, totalPages, totalRows, showAll, getCurrent, goTo) 
 }
 
 function initTagihanPagination() {
+  hideAllBillItems('tagihanTableBody');
   const rows = getRows('tagihanTableBody');
-  if (rows.length) paginateRows(rows, tagihanPage, tagihanPerPageVal, tagihanAll, 'tagihanInfo', (tp, tr) => renderPagination('tagihanPagination', tp, tr, tagihanAll, () => tagihanPage, 'goToTagihanPage'), 'tagihanTableBody');
+  paginateRows(rows, tagihanPage, tagihanPerPageVal, tagihanAll, 'tagihanInfo', (tp, tr) => renderPagination('tagihanPagination', tp, tr, tagihanAll, () => tagihanPage, 'goToTagihanPage'), 'tagihanTableBody');
 }
 
 function initLunasPagination() {
+  hideAllBillItems('lunasTableBody');
   const rows = getRows('lunasTableBody');
-  if (rows.length) paginateRows(rows, lunasPage, lunasPerPageVal, lunasAll, 'lunasInfo', (tp, tr) => renderPagination('lunasPagination', tp, tr, lunasAll, () => lunasPage, 'goToLunasPage'), 'lunasTableBody');
+  paginateRows(rows, lunasPage, lunasPerPageVal, lunasAll, 'lunasInfo', (tp, tr) => renderPagination('lunasPagination', tp, tr, lunasAll, () => lunasPage, 'goToLunasPage'), 'lunasTableBody');
 }
 
 function goToTagihanPage(p) { tagihanPage = p; paginateRows(getRows('tagihanTableBody'), tagihanPage, tagihanPerPageVal, tagihanAll, 'tagihanInfo', (tp, tr) => renderPagination('tagihanPagination', tp, tr, tagihanAll, () => tagihanPage, 'goToTagihanPage'), 'tagihanTableBody'); }

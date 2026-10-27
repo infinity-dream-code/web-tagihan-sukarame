@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Http\Controllers\TagihanController;
+use App\Models\MultiAccountGroup;
+use App\Models\MultiAccountMember;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -74,13 +76,18 @@ class MultiAccountService
             'active_va' => TagihanController::normalizeVa($activeNoCust ?: $noCust),
         ]);
 
-        if (empty($result['status'])) {
-            return collect();
+        $accounts = [];
+        if (!empty($result['status'])) {
+            $accounts = $result['data']['accounts'] ?? [];
         }
 
-        $accounts = $result['data']['accounts'] ?? [];
+        $remote = collect(is_array($accounts) ? $accounts : []);
+        $local = self::localAccounts(TagihanController::normalizeVa($noCust), TagihanController::normalizeVa($activeNoCust ?: $noCust));
 
-        return collect(is_array($accounts) ? $accounts : []);
+        return $remote
+            ->concat($local)
+            ->unique(fn ($acc) => TagihanController::normalizeVa($acc['no_cust'] ?? ''))
+            ->values();
     }
 
     /**
@@ -109,8 +116,9 @@ class MultiAccountService
             $cek['data']['no_cust'] ?? $cek['data']['num2nd'] ?? $newVa
         );
 
+        $storedNis = (string) ($cek['data']['no_cust'] ?? $resolvedNis);
         $result = ['status' => false, 'message' => 'Gagal menambahkan multi akun'];
-        foreach (array_unique(array_filter([$resolvedNis, ...TagihanController::vaCandidates($newVa)])) as $candidate) {
+        foreach (array_unique(array_filter([$storedNis, $resolvedNis, ...TagihanController::vaCandidates($newVa)])) as $candidate) {
             $result = self::postWs('multi-akun-tambah', [
                 'active_va' => TagihanController::normalizeVa($activeVa),
                 'active_tahun_akademik' => $activeAcademicYear,
@@ -125,6 +133,11 @@ class MultiAccountService
         }
 
         if (empty($result['status'])) {
+            $local = self::linkLocally($activeVa, $cek['data']);
+            if (!empty($local['status'])) {
+                return $local;
+            }
+
             return [
                 'status' => false,
                 'message' => $result['message'] ?? 'Gagal menambahkan multi akun. Pastikan nomor VA dan password benar.',
@@ -225,6 +238,81 @@ class MultiAccountService
                 'group_id' => $groupId,
             ],
         ]);
+    }
+
+    private static function localAccounts(string $noCust, string $activeNoCust): Collection
+    {
+        $member = MultiAccountMember::query()
+            ->where('no_cust', $noCust)
+            ->orWhere('no_cust', $activeNoCust)
+            ->first();
+
+        if (!$member) {
+            return collect();
+        }
+
+        return $member->group
+            ? $member->group->members->map(fn (MultiAccountMember $item) => [
+                'group_id' => $item->group_id,
+                'no_cust' => $item->no_cust,
+                'va_display' => $item->va_display ?: TagihanController::formatNova($item->no_cust),
+                'nama' => $item->nama,
+                'kelas' => $item->kelas,
+                'jenjang' => $item->jenjang,
+                'is_active' => TagihanController::normalizeVa($item->no_cust) === $activeNoCust,
+            ])
+            : collect();
+    }
+
+    private static function linkLocally(string $activeVa, array $cekData): array
+    {
+        try {
+            $activeNis = TagihanController::normalizeVa($activeVa);
+            $newNis = TagihanController::normalizeVa($cekData['no_cust'] ?? '');
+            if ($activeNis === '' || $newNis === '') {
+                return ['status' => false];
+            }
+
+            $activeMember = MultiAccountMember::query()->where('no_cust', $activeNis)->first();
+            if ($activeMember) {
+                $group = $activeMember->group;
+            } else {
+                $group = MultiAccountGroup::create();
+                MultiAccountMember::create([
+                    'group_id' => $group->id,
+                    'no_cust' => $activeNis,
+                    'va_display' => TagihanController::formatNova($activeNis),
+                    'nama' => null,
+                    'kelas' => null,
+                    'jenjang' => null,
+                ]);
+            }
+
+            MultiAccountMember::query()->updateOrCreate(
+                ['no_cust' => $newNis],
+                [
+                    'group_id' => $group->id,
+                    'va_display' => TagihanController::formatNova($cekData['no_cust'] ?? $newNis),
+                    'nama' => $cekData['nama'] ?? null,
+                    'kelas' => $cekData['kelas'] ?? null,
+                    'jenjang' => $cekData['jenjang'] ?? null,
+                ]
+            );
+
+            $accounts = self::localAccounts($activeNis, $activeNis);
+
+            return [
+                'status' => true,
+                'message' => 'Akun berhasil ditambahkan',
+                'group_id' => $group->id,
+                'members' => $accounts,
+                'active_no_cust' => $activeNis,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('multi-akun local fallback failed', ['error' => $e->getMessage()]);
+
+            return ['status' => false];
+        }
     }
 
     public static function syncMemberAfterLogin(array $data, string $vaDisplay, string $academicYear): void

@@ -1,13 +1,29 @@
 
 <?php
-require_once __DIR__ . '/../config/database.php';
+if (!class_exists('Database')) {
+    foreach ([
+        __DIR__ . '/config/database.php',
+        __DIR__ . '/ws/config/database.php',
+        __DIR__ . '/../config/database.php',
+    ] as $databaseFile) {
+        if (is_file($databaseFile)) {
+            require_once $databaseFile;
+            break;
+        }
+    }
+}
 
 class Tagihan
 {
     private $db;
 
-    public function __construct()
+    public function __construct($pdo = null)
     {
+        if ($pdo instanceof PDO) {
+            $this->db = $pdo;
+            return;
+        }
+
         $database = new Database();
         $this->db = $database->getConnection();
     }
@@ -276,30 +292,29 @@ class Tagihan
 
     private function findUserByVa($va_number)
     {
-        $candidates = $this->vaCandidates($va_number);
-        if (!$candidates) {
+        $trimmed = $this->stripVa($va_number);
+        if ($trimmed === '') {
             return null;
         }
 
-        $placeholders = implode(',', array_fill(0, count($candidates), '?'));
         $sql = "SELECT userlogin, kunci FROM sm_user
-            WHERE userlogin IN ($placeholders)
-               OR TRIM(LEADING '0' FROM userlogin) IN ($placeholders)
+            WHERE TRIM(userlogin) = ?
+               OR TRIM(LEADING '0' FROM TRIM(userlogin)) = ?
+               OR CAST(TRIM(userlogin) AS UNSIGNED) = ?
             LIMIT 1";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(array_merge($candidates, $candidates));
+        $stmt->execute([$trimmed, $trimmed, (int) $trimmed]);
 
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
     private function getSiswaByVa($va_number)
     {
-        $candidates = $this->vaCandidates($va_number);
-        if (!$candidates) {
+        $trimmed = $this->stripVa($va_number);
+        if ($trimmed === '') {
             return null;
         }
 
-        $placeholders = implode(',', array_fill(0, count($candidates), '?'));
         $sql = "
         SELECT 
             c.CUSTID AS id,
@@ -317,15 +332,17 @@ class Tagihan
             c.GENUS AS orangtua,
             c.LastUpdate AS updated_at
         FROM scctcust c
-        WHERE c.NOCUST IN ($placeholders)
-           OR c.NUM2ND IN ($placeholders)
-           OR TRIM(LEADING '0' FROM c.NOCUST) IN ($placeholders)
-           OR TRIM(LEADING '0' FROM c.NUM2ND) IN ($placeholders)
+        WHERE TRIM(c.NOCUST) = ?
+           OR TRIM(c.NUM2ND) = ?
+           OR TRIM(LEADING '0' FROM TRIM(c.NOCUST)) = ?
+           OR TRIM(LEADING '0' FROM TRIM(c.NUM2ND)) = ?
+           OR CAST(TRIM(c.NOCUST) AS UNSIGNED) = ?
+           OR CAST(TRIM(c.NUM2ND) AS UNSIGNED) = ?
         LIMIT 1
     ";
-        $params = array_merge($candidates, $candidates, $candidates, $candidates);
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
+        $num = (int) $trimmed;
+        $stmt->execute([$trimmed, $trimmed, $trimmed, $trimmed, $num, $num]);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
