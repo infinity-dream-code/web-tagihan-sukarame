@@ -20,5 +20,7 @@ yarn-error.log
 ws/*
 !ws/index.php
 !ws/ubah-password.php
+!ws/controllers/
+!ws/controllers/add-ubahPassword.php
 !ws/config/
 !ws/config/database.php

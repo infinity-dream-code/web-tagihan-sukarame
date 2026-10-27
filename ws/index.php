@@ -1,93 +1,79 @@
 <?php
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 
-header('Content-Type: application/json; charset=utf-8');
-
-$tagihanFile = is_file(__DIR__ . '/../ws.php') ? __DIR__ . '/../ws.php' : __DIR__ . '/ws.php';
-if (!is_file(__DIR__ . '/config/database.php')) {
-    // continue; ws.php will look up Database itself
-} else {
-    require_once __DIR__ . '/config/database.php';
-}
-require_once $tagihanFile;
-
-$raw = file_get_contents('php://input');
-$input = json_decode((string) $raw, true);
-if (!is_array($input) || !$input) {
-    $input = $_POST;
-}
-if (!is_array($input)) {
-    $input = [];
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
 }
 
-$path = (string) ($_GET['path'] ?? $input['path'] ?? '');
-$va = $input['va'] ?? $input['no_cust'] ?? $input['va_number'] ?? '';
-$password = $input['password'] ?? '';
-$passwordBaru = $input['password_baru'] ?? $input['new_password'] ?? '';
-$tahun = $input['tahun_akademik'] ?? 'all';
+require_once __DIR__ . '/controllers/TagihanController.php';
 
-try {
-    $tagihan = new Tagihan();
-} catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
-        'status' => false,
-        'message' => 'Gagal koneksi database billing',
-        'data' => null,
-    ]);
-    exit;
-}
+$path = $_GET['path'] ?? '';
 
 switch ($path) {
-    case 'cek-tagihan-pw':
-        $data = $tagihan->cekTagihanByVAPw($va, $password, $tahun);
-        echo json_encode([
-            'status' => (bool) $data,
-            'message' => $data ? 'Data ditemukan' : 'VA atau Password salah, atau data tidak ditemukan',
-            'data' => $data ?: null,
-        ]);
-        break;
-
     case 'cek-tagihan':
-        $data = $tagihan->cekTagihanByVA($va, $tahun);
-        echo json_encode([
-            'status' => (bool) $data,
-            'message' => $data ? 'Data ditemukan' : 'Data tidak ditemukan untuk VA dan Tahun Akademik tersebut',
-            'data' => $data ?: null,
-        ]);
+        $controller = new TagihanController();
+        $controller->cek();
         break;
 
-    case 'ubah-password':
-        require __DIR__ . '/ubah-password.php';
-        break;
-
-    case 'list-tahun-aka':
-        $data = $tagihan->getAllTahunAkademik();
-        echo json_encode([
-            'status' => true,
-            'message' => 'OK',
-            'data' => $data,
-        ]);
+    case 'cek-tagihan-pw':
+        $controller = new TagihanController();
+        $controller->cek2();
         break;
 
     case 'generate-va':
-        $ok = $tagihan->insertVA(
-            $input['custid'] ?? $input['CUSTID'] ?? '',
-            $input['nocust'] ?? $input['NOCUST'] ?? $va,
-            $input['namacust'] ?? $input['NMCUST'] ?? '',
-            $input['arrayTagihan'] ?? $input['ArrayTagihan'] ?? '',
-            $input['billam'] ?? $input['BILLAM'] ?? ''
-        );
-        echo json_encode([
-            'status' => (bool) $ok,
-            'message' => $ok ? 'VA berhasil dibuat' : 'Gagal membuat VA',
-            'data' => $ok ? ['va_number' => $input['nocust'] ?? $va] : null,
-        ]);
+        $controller = new TagihanController();
+        $controller->generateVA();
+        break;
+
+    case 'list-tahun-aka':
+        $controller = new TagihanController();
+        $controller->getTahunAkademik();
+        break;
+
+    case 'multi-akun-list':
+        $controller = new TagihanController();
+        $controller->multiAkunList();
+        break;
+
+    case 'multi-akun-tambah':
+        $controller = new TagihanController();
+        $controller->multiAkunTambah();
+        break;
+
+    case 'multi-akun-switch':
+        $controller = new TagihanController();
+        $controller->multiAkunSwitch();
+        break;
+
+    case 'multi-akun-hapus':
+        $controller = new TagihanController();
+        $controller->multiAkunHapus();
+        break;
+
+    case 'token-buat':
+        $controller = new TagihanController();
+        $controller->tokenBuat();
+        break;
+
+    case 'token-login':
+        $controller = new TagihanController();
+        $controller->tokenLogin();
+        break;
+
+    case 'ubah-password':
+        $controller = new TagihanController();
+        if (method_exists($controller, 'ubahPassword')) {
+            $controller->ubahPassword();
+        } else {
+            require __DIR__ . '/ubah-password.php';
+        }
         break;
 
     default:
-        echo json_encode([
-            'status' => false,
-            'message' => 'Endpoint tidak ditemukan',
-            'data' => null,
-        ]);
+        header('Content-Type: application/json');
+        echo json_encode(['status' => false, 'message' => 'Endpoint tidak ditemukan']);
+        break;
 }
