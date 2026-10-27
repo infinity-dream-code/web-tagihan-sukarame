@@ -283,6 +283,14 @@ class TagihanController extends Controller
     {
         $multiAccounts = collect();
         try {
+            session([
+                'tagihan.siswa' => [
+                    'no_cust' => self::normalizeVa($result['data']['no_cust'] ?? $vaDisplay),
+                    'nama' => $result['data']['nama'] ?? null,
+                    'kelas' => $result['data']['kelas'] ?? null,
+                    'jenjang' => $result['data']['jenjang'] ?? null,
+                ],
+            ]);
             MultiAccountService::syncMemberAfterLogin(
                 $result['data'],
                 $vaDisplay,

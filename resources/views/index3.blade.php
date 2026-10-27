@@ -1427,8 +1427,8 @@ async function submitTambahMultiAkun(e) {
   e.preventDefault();
   clearMaMessages();
   const btn = document.getElementById('maSubmitBtn');
-  const noCust = expandVaOrNis(document.getElementById('maNoCust')?.value);
-  const password = document.getElementById('maPassword')?.value || '';
+  const noCust = String(document.getElementById('maNoCust')?.value || '').trim();
+  const password = String(document.getElementById('maPassword')?.value || '').trim();
   const academicYear = 'all';
   if (!noCust || !password) {
     showMaError('Lengkapi VA/NIS dan password');

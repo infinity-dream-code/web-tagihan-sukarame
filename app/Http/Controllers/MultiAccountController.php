@@ -211,6 +211,15 @@ class MultiAccountController extends Controller
         $result = $this->withNova($switched['result'], $targetNoCust);
         $vaDisplay = $switched['va_display'] ?? ($result['data']['va_number'] ?? $targetNoCust);
 
+        session([
+            'tagihan.siswa' => [
+                'no_cust' => TagihanController::normalizeVa($result['data']['no_cust'] ?? $targetNoCust),
+                'nama' => $result['data']['nama'] ?? null,
+                'kelas' => $result['data']['kelas'] ?? null,
+                'jenjang' => $result['data']['jenjang'] ?? null,
+            ],
+        ]);
+
         MultiAccountService::putSession(
             $result['data']['no_cust'] ?? $targetNoCust,
             $vaDisplay,
