@@ -77,13 +77,16 @@ class TagihanController extends Controller
         }
 
         $padded = str_pad($trimmed, self::vaSuffixLength(), '0', STR_PAD_LEFT);
+        $formatted = self::vaPrefix().$padded;
 
         return array_values(array_unique(array_filter([
-            $trimmed,
+            $formatted,
             $padded,
+            $trimmed,
             $afterPrefix,
             $raw,
-        ], fn ($v) => $v !== '')));
+            self::vaPrefix().$trimmed,
+        ], fn ($v) => $v !== '' && $v !== '-')));
     }
 
     public static function normalizeVa(?string $va): string

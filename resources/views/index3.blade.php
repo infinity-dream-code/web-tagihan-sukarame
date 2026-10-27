@@ -345,8 +345,8 @@ h1{font-size:1.15rem}
       <div class="section-title">Informasi akun</div>
       <div class="form-grid">
         <div class="field">
-          <label>Nomor VA <em>*</em></label>
-          <input type="text" name="no_cust" id="noCust" inputmode="numeric" autocomplete="username" placeholder="777726xxxxxxxxxx" value="{{ old('no_cust', $va ?? '') }}" required>
+          <label>Nomor VA / NIS <em>*</em></label>
+          <input type="text" name="no_cust" id="noCust" inputmode="numeric" autocomplete="username" placeholder="777726xxxxxxxxxx atau NIS" value="{{ old('no_cust', $va ?? '') }}" required>
         </div>
         <div class="field">
           <label>Password <em>*</em></label>
@@ -852,8 +852,8 @@ h1{font-size:1.15rem}
       <form id="multiAkunForm" onsubmit="return submitTambahMultiAkun(event)">
         @csrf
         <div class="field">
-          <label>Nomor VA <em>*</em></label>
-          <input type="text" name="no_cust" id="maNoCust" placeholder="777726xxxxxxxxxx" required autocomplete="username">
+          <label>Nomor VA / NIS <em>*</em></label>
+          <input type="text" name="no_cust" id="maNoCust" placeholder="777726xxxxxxxxxx atau NIS" required autocomplete="username">
         </div>
         <div class="field">
           <label>Password <em>*</em></label>
@@ -977,6 +977,14 @@ document.addEventListener('DOMContentLoaded', () => {
   fillYearSelects();
   initTagihanPagination();
   initLunasPagination();
+
+  const billForm = document.getElementById('billForm');
+  if (billForm) {
+    billForm.addEventListener('submit', () => {
+      const input = document.getElementById('noCust');
+      if (input) input.value = expandVaOrNis(input.value);
+    });
+  }
 });
 
 const preselectedYear = @json($academic_year ?? 'all');
@@ -1419,11 +1427,11 @@ async function submitTambahMultiAkun(e) {
   e.preventDefault();
   clearMaMessages();
   const btn = document.getElementById('maSubmitBtn');
-  const noCust = document.getElementById('maNoCust')?.value?.trim();
+  const noCust = expandVaOrNis(document.getElementById('maNoCust')?.value);
   const password = document.getElementById('maPassword')?.value || '';
   const academicYear = 'all';
   if (!noCust || !password) {
-    showMaError('Lengkapi VA dan password');
+    showMaError('Lengkapi VA/NIS dan password');
     return false;
   }
   if (btn) {
@@ -1484,6 +1492,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function formatRp(n) {
   return 'Rp ' + (parseInt(n, 10) || 0).toLocaleString('id-ID');
+}
+
+function expandVaOrNis(value) {
+  let n = String(value ?? '').replace(/\D+/g, '');
+  if (!n) return '';
+  if (n.startsWith('777726') && n.length >= 16) return n;
+  const prefixes = ['777726', '797777', '757777', '797766', '751000', '797783', '77726', '96240'];
+  for (const p of prefixes) {
+    if (n.startsWith(p) && n.length > p.length) {
+      n = n.slice(p.length);
+      break;
+    }
+  }
+  n = n.replace(/^0+/, '') || n;
+  return '777726' + n.padStart(10, '0');
 }
 
 function formatNovaDisplay(va) {

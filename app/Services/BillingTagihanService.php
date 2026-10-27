@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\TagihanController;
 use PDO;
 use Throwable;
 
@@ -18,8 +19,8 @@ class BillingTagihanService
             return null;
         }
 
-        $va = $vaInput ?: (string) ($payload['va'] ?? '');
-        if ($va === '') {
+        $candidates = TagihanController::vaCandidates($vaInput ?: (string) ($payload['va'] ?? ''));
+        if (!$candidates) {
             return null;
         }
 
@@ -28,20 +29,27 @@ class BillingTagihanService
             require_once base_path('ws.php');
 
             $tagihan = new \Tagihan(self::pdo());
+            $data = null;
 
-            if ($path === 'cek-tagihan-pw') {
-                $data = $tagihan->cekTagihanByVAPw(
-                    $va,
-                    (string) ($payload['password'] ?? ''),
-                    $payload['tahun_akademik'] ?? 'all'
-                );
-            } elseif ($path === 'cek-tagihan') {
-                $data = $tagihan->cekTagihanByVA(
-                    $va,
-                    $payload['tahun_akademik'] ?? 'all'
-                );
-            } else {
-                return null;
+            foreach ($candidates as $va) {
+                if ($path === 'cek-tagihan-pw') {
+                    $data = $tagihan->cekTagihanByVAPw(
+                        $va,
+                        (string) ($payload['password'] ?? ''),
+                        $payload['tahun_akademik'] ?? 'all'
+                    );
+                } elseif ($path === 'cek-tagihan') {
+                    $data = $tagihan->cekTagihanByVA(
+                        $va,
+                        $payload['tahun_akademik'] ?? 'all'
+                    );
+                } else {
+                    return null;
+                }
+
+                if ($data) {
+                    break;
+                }
             }
 
             if (!$data) {

@@ -259,11 +259,11 @@ class Tagihan
         $padded = str_pad($trimmed, 10, '0', STR_PAD_LEFT);
 
         return array_values(array_unique(array_filter([
-            $raw,
-            $afterPrefix,
-            $trimmed,
-            $padded,
             '777726'.$padded,
+            $padded,
+            $trimmed,
+            $afterPrefix,
+            $raw,
             '777726'.$trimmed,
         ])));
     }
